@@ -24,25 +24,29 @@ namespace NTC.FamilyManager
             Application app = uiapp.Application;
             Document doc = uidoc.Document;
 
-            // Khi chạy bằng Add-in Manager thì comment 2 dòng bên dưới để tránh lỗi
-            // When running with Add-in Manager, comment the 2 lines below to avoid errors
-            string dllFolder = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
-            
-            // Note: AssemblyLoader might need namespace update too
-            AssemblyLoader.LoadAllRibbonAssemblies(dllFolder);
-
-
-            // code here
-
-            using (TransactionGroup tranGroup = new TransactionGroup(doc))
+            try
             {
-              tranGroup.Start("NTC.FamilyManagerTransGr");
+                // Khởi tạo trình nạp thư viện để tránh lỗi thiếu DLL giao diện (WPF)
+                using (var loader = new AssemblyLoader())
+                {
+                    using (TransactionGroup tranGroup = new TransactionGroup(doc))
+                    {
+                        tranGroup.Start("NTC.FamilyManagerTransGr");
 
-              MainViewModel viewModel = new MainViewModel(uidoc);
-              MainWindow window = new MainWindow(viewModel);
-              if (window.ShowDialog() == false) return Result.Cancelled;
+                        MainViewModel viewModel = new MainViewModel(uidoc);
+                        MainWindow window = new MainWindow(viewModel);
+                        
+                        // Hiển thị giao diện
+                        window.ShowDialog();
 
-              tranGroup.Assimilate();
+                        tranGroup.Assimilate();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("NTC Error", "Có lỗi xảy ra: " + ex.Message);
+                return Result.Failed;
             }
 
             return Result.Succeeded;

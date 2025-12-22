@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 
 namespace NTC.FamilyManager
@@ -12,67 +10,58 @@ namespace NTC.FamilyManager
 
         internal AssemblyLoader()
         {
-            AppDomain.CurrentDomain.AssemblyResolve += LoadMaterialDesign;
+            AppDomain.CurrentDomain.AssemblyResolve += LoadAssemblies;
         }
 
-        private static Assembly LoadMaterialDesign(object sender, ResolveEventArgs args)
+        private static Assembly LoadAssemblies(object sender, ResolveEventArgs args)
         {
-            if (null == ExecutingPath) return null;
-            string assemlyToLoad = string.Empty;
-
-            string GetAssemblyName(string fullName) => fullName.Contains(',') ? fullName.Substring(0, fullName.IndexOf(',')) : fullName;
-
-            var path = ExecutingPath;
-            var dir = new FileInfo(path).Directory;
-
-            var assemblies = from file in dir.EnumerateFiles()
-                             where file.Name.EndsWith(".dll") ||
-                                   file.Name.EndsWith(".exe")
-                             select Assembly.LoadFrom(file.FullName);
-
-            foreach (var assembly in assemblies)
+            try
             {
-                var assemName = GetAssemblyName(assembly.FullName);
-                var requested = GetAssemblyName(args.Name);
+                if (string.IsNullOrEmpty(ExecutingPath)) return null;
 
-                try
+                // Lấy tên assembly đang yêu cầu (vd: MahApps.Metro.ALB)
+                string requestedName = args.Name.Contains(",") 
+                    ? args.Name.Substring(0, args.Name.IndexOf(",")) 
+                    : args.Name;
+
+                var assemblyDir = Path.GetDirectoryName(ExecutingPath);
+                if (assemblyDir == null) return null;
+
+                // Danh sách các thư mục cần tìm kiếm DLL
+                string[] searchPaths = new string[]
                 {
-                    if (assemName == requested)
+                    assemblyDir,
+                    Path.Combine(assemblyDir, "Lib")
+                };
+
+                foreach (var path in searchPaths)
+                {
+                    if (!Directory.Exists(path)) continue;
+
+                    string assemblyPath = Path.Combine(path, requestedName + ".dll");
+                    if (File.Exists(assemblyPath))
                     {
-                        return assembly;
+                        // Kiểm tra xem assembly đã được load chưa để tránh loop
+                        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            if (assembly.FullName.Contains(requestedName)) return assembly;
+                        }
+
+                        return Assembly.LoadFrom(assemblyPath);
                     }
                 }
-                catch (Exception)
-                {
-                    continue;
-                }
-
-                //}
+            }
+            catch (Exception)
+            {
+                // Tránh throw exception trong Resolve event vì sẽ gây crash Revit
             }
 
             return null;
         }
 
-        void IDisposable.Dispose()
+        public void Dispose()
         {
-            AppDomain.CurrentDomain.AssemblyResolve -= LoadMaterialDesign;
+            AppDomain.CurrentDomain.AssemblyResolve -= LoadAssemblies;
         }
-
-        internal static List<Assembly> LoadAllRibbonAssemblies(string commandFolderPath)
-        {
-            List<Assembly> list = new List<Assembly>();
-            foreach (string assemblyFile in Directory.GetFiles(commandFolderPath, "*.dll"))
-            {
-                try
-                {
-                    list.Add(Assembly.LoadFrom(assemblyFile));
-                }
-                catch
-                {
-                }
-            }
-            return list;
-        }
-
     }
 }
