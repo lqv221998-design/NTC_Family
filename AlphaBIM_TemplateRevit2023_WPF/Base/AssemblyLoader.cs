@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Linq;
 
 namespace NTC.FamilyManager
 {
@@ -11,6 +12,37 @@ namespace NTC.FamilyManager
         internal AssemblyLoader()
         {
             AppDomain.CurrentDomain.AssemblyResolve += LoadAssemblies;
+            ForceLoadAssemblies();
+        }
+
+        /// <summary>
+        /// Nạp cưỡng bức các thư viện hay bị xung đột trong Revit
+        /// </summary>
+        private void ForceLoadAssemblies()
+        {
+            // Danh sách các assembly hay gây lỗi type mismatch trong Revit
+            string[] criticalAssemblies = { 
+                "System.Diagnostics.DiagnosticSource", 
+                "System.Runtime.CompilerServices.Unsafe",
+                "Microsoft.Bcl.AsyncInterfaces"
+            };
+
+            var assemblyDir = Path.GetDirectoryName(ExecutingPath);
+            if (assemblyDir == null) return;
+
+            foreach (var name in criticalAssemblies)
+            {
+                try
+                {
+                    string path = Path.Combine(assemblyDir, name + ".dll");
+                    if (File.Exists(path))
+                    {
+                        // Nạp bằng byte array để tránh bị khóa file và "đè" lên các phiên bản đã nạp bởi host
+                        Assembly.Load(File.ReadAllBytes(path));
+                    }
+                }
+                catch { /* Ignore if fails */ }
+            }
         }
 
         private static Assembly LoadAssemblies(object sender, ResolveEventArgs args)
@@ -19,42 +51,58 @@ namespace NTC.FamilyManager
             {
                 if (string.IsNullOrEmpty(ExecutingPath)) return null;
 
-                // Lấy tên assembly đang yêu cầu (vd: MahApps.Metro.ALB)
-                string requestedName = args.Name.Contains(",") 
-                    ? args.Name.Substring(0, args.Name.IndexOf(",")) 
-                    : args.Name;
+                // Lấy thông tin assembly yêu cầu
+                AssemblyName requestedAssemblyName = new AssemblyName(args.Name);
+                string requestedName = requestedAssemblyName.Name;
+
+                // Tránh loop vô tận cho các thư viện hệ thống cơ bản
+                if (requestedName == "mscorlib" || requestedName == "System" || requestedName == "System.Core")
+                    return null;
 
                 var assemblyDir = Path.GetDirectoryName(ExecutingPath);
                 if (assemblyDir == null) return null;
 
-                // Danh sách các thư mục cần tìm kiếm DLL
-                string[] searchPaths = new string[]
-                {
-                    assemblyDir,
-                    Path.Combine(assemblyDir, "Lib")
+                // Ưu tiên các thư viện hệ thống hay bị Revit nạp sẵn bản cũ
+                string[] forceOverwrite = { 
+                    "System.Diagnostics.DiagnosticSource", 
+                    "System.Runtime.CompilerServices.Unsafe",
+                    "System.Text.Json",
+                    "Microsoft.Bcl.AsyncInterfaces"
                 };
 
-                foreach (var path in searchPaths)
+                if (forceOverwrite.Any(name => requestedName.StartsWith(name)))
                 {
-                    if (!Directory.Exists(path)) continue;
-
-                    string assemblyPath = Path.Combine(path, requestedName + ".dll");
-                    if (File.Exists(assemblyPath))
+                    string path = Path.Combine(assemblyDir, requestedName + ".dll");
+                    if (!File.Exists(path)) path = Path.Combine(assemblyDir, "Lib", requestedName + ".dll");
+                    
+                    if (File.Exists(path)) 
                     {
-                        // Kiểm tra xem assembly đã được load chưa để tránh loop
-                        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                        {
-                            if (assembly.FullName.Contains(requestedName)) return assembly;
-                        }
-
-                        return Assembly.LoadFrom(assemblyPath);
+                        // Nạp bằng byte array để ghi đè (Override)
+                        return Assembly.Load(File.ReadAllBytes(path));
                     }
                 }
+
+                // Tìm trong thư mục root hoặc Lib cho các assembly khác
+                string assemblyPath = Path.Combine(assemblyDir, requestedName + ".dll");
+                if (!File.Exists(assemblyPath))
+                    assemblyPath = Path.Combine(assemblyDir, "Lib", requestedName + ".dll");
+
+                if (File.Exists(assemblyPath))
+                {
+                    // Kiểm tra phiên bản nếu đã được nạp
+                    var loadedAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                        .FirstOrDefault(a => a.GetName().Name == requestedName);
+
+                    if (loadedAssembly != null)
+                    {
+                        if (loadedAssembly.GetName().Version >= requestedAssemblyName.Version)
+                            return loadedAssembly;
+                    }
+
+                    return Assembly.LoadFrom(assemblyPath);
+                }
             }
-            catch (Exception)
-            {
-                // Tránh throw exception trong Resolve event vì sẽ gây crash Revit
-            }
+            catch { }
 
             return null;
         }

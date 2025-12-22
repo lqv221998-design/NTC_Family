@@ -9,7 +9,7 @@ using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
 namespace NTC.FamilyManager
 {
-    public partial class MainWindow
+    public partial class MainWindow : MahApps.Metro.Controls.MetroWindow
     {
         private MainViewModel _viewModel;
 
@@ -23,10 +23,13 @@ namespace NTC.FamilyManager
 
         private void MainWindow_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Space || e.Key == Key.Enter)
+            if (e.Key == Key.Enter)
             {
-                DialogResult = true;
-                Close();
+                // Nếu Enter, ta sẽ gọi LoginCommand từ ViewModel thay vì đóng Dialog
+                if (_viewModel.LoginCommand.CanExecute(null))
+                {
+                    _viewModel.LoginCommand.Execute(null);
+                }
             }
 
             if (e.Key == Key.Escape)

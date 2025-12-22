@@ -11,48 +11,102 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
-using AlphaBIM;
+using System.Windows.Input;
+using System.Threading.Tasks;
+using NTC.FamilyManager.Base;
 #endregion
 
 namespace NTC.FamilyManager
 {
     public class MainViewModel : ViewModelBase
     {
+        private readonly IAuthService _authService;
+
         public MainViewModel(UIDocument uiDoc)
         {
-        	// Khởi tạo sự kiện(nếu có) | Initialize event (if have)
-
-            // Lưu trữ data từ Revit | Store data from Revit
             UiDoc = uiDoc;
             Doc = UiDoc.Document;
 
-            // Khởi tạo data cho WPF | Initialize data for WPF
-            Initialize();
-
-            // Get setting(if have)
-
+            _authService = new AuthService();
+            LoginCommand = new RelayCommand(_ => _ = LoginAction());
+            
+            StatusMessage = "Vui lòng đăng nhập để tiếp tục.";
         }
 
-        private void Initialize()
+        public ICommand LoginCommand { get; }
+
+        private async System.Threading.Tasks.Task LoginAction()
         {
+            StatusMessage = "Đang khởi tạo trình đăng nhập Microsoft...";
+            
+            try
+            {
+                // Gọi LoginAsync mà không cần truyền email trước (Cửa sổ MS sẽ tự hỏi)
+                bool success = await _authService.LoginAsync();
+                
+                if (success)
+                {
+                    UserName = _authService.UserName;
+                    UserEmail = _authService.UserEmail;
+                    IsLoggedIn = true;
+                    StatusMessage = "Đăng nhập thành công!";
 
+                    // TODO: Khởi tạo dữ liệu SharePoint sau khi đăng nhập thành công
+                }
+                else
+                {
+                    StatusMessage = "Đăng nhập thất bại hoặc bị hủy.";
+                    IsLoggedIn = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = "Lỗi xác thực: " + ex.Message;
+                IsLoggedIn = false;
+                
+                // Nếu lỗi liên quan đến nạp DLL, gợi ý người dùng khởi động lại Revit
+                if (ex.Message.Contains("DiagnosticSource") || ex.Message.Contains("Meter"))
+                {
+                    StatusMessage = "Lỗi thư viện hệ thống. Vui lòng khởi động lại Revit.";
+                }
+            }
         }
 
-        #region public property
+        #region Public Properties
 
-        public UIDocument UiDoc;
-        public Document Doc;
+        public UIDocument UiDoc { get; }
+        public Document Doc { get; }
 
-        #endregion public property
+        // Đã gỡ UserEmailInput theo Image 0
 
-        #region private variable
+        private string _userName;
+        public string UserName
+        {
+            get => _userName;
+            set => SetProperty(ref _userName, value);
+        }
 
-        private double _percent;
+        private string _userEmail;
+        public string UserEmail
+        {
+            get => _userEmail;
+            set => SetProperty(ref _userEmail, value);
+        }
 
-        #endregion private variable
+        private bool _isLoggedIn;
+        public bool IsLoggedIn
+        {
+            get => _isLoggedIn;
+            set => SetProperty(ref _isLoggedIn, value);
+        }
 
-		// Các method khác viết ở dưới đây | Other methods written below
+        private string _statusMessage;
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
+        }
 
-
+        #endregion
     }
 }

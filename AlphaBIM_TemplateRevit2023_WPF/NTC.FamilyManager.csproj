@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8" ?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Configurations>D2020;D2021;D2022;D2023;D2024;D2025;R2020;R2021;R2022;R2023;R2024;R2025</Configurations>
@@ -108,15 +108,21 @@
             <HintPath>Lib\Microsoft.Xaml.Behaviors.dll</HintPath>
             <Private>True</Private>
         </Reference>
+        <Reference Include="System.Web"
+                   Condition="'$(TargetFramework)' == 'net48'" />
+        <Reference Include="System.Net.Http"
+                   Condition="'$(TargetFramework)' == 'net48'" />
+        <Reference Include="Microsoft.CSharp"
+                   Condition="'$(TargetFramework)' == 'net48'" />
     </ItemGroup>
     <!-- Common NuGet Packages -->
     <ItemGroup>
-        <PackageReference Include="Microsoft.Identity.Client"
-                          Version="4.61.3" />
-        <PackageReference Include="Microsoft.Graph"
-                          Version="5.56.0" />
+        <PackageReference Include="Microsoft.Web.WebView2"
+                          Version="1.0.2592.51" />
         <PackageReference Include="Newtonsoft.Json"
                           Version="13.0.3" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData"
+                          Version="8.0.0" />
     </ItemGroup>
     <!-- Debug settings -->
     <PropertyGroup Condition="$(Configuration.StartsWith('D'))">

@@ -29,45 +29,24 @@
                 <ResourceDictionary Source="/MaterialDesignThemes.Wpf.ALB;component/Themes/materialdesigntheme.defaults.xaml" />
                 <ResourceDictionary Source="/AlphaBIMWPF;component/Resource/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <local:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
             <Style TargetType="{x:Type Button}"
                    BasedOn="{StaticResource ButtonStyle}" />
         </ResourceDictionary>
     </mah:MetroWindow.Resources>
-    <mah:MetroWindow.LeftWindowCommands>
-        <mah:WindowCommands>
-            <Button Click="OpenWebSite">
-                <materialDesign:PackIcon Kind="HomeCircle"
-                                         Width="22"
-                                         Height="22" />
-            </Button>
-            <Button Click="CustomDevelopment">
-                <materialDesign:PackIcon Kind="DeveloperBoard"
-                                         Width="22"
-                                         Height="22" />
-            </Button>
-        </mah:WindowCommands>
-    </mah:MetroWindow.LeftWindowCommands>
-    <mah:MetroWindow.RightWindowCommands>
-        <mah:WindowCommands>
-            <Button Click="Feedback">
-                <Button.ContentTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="FaceAgent"
-                                                     Width="22"
-                                                     Height="22"
-                                                     VerticalAlignment="Center" />
-                            <TextBlock Margin="4 0 0 0"
-                                       VerticalAlignment="Center"
-                                       Text="NTC BIM Support" />
-                        </StackPanel>
-                    </DataTemplate>
-                </Button.ContentTemplate>
-            </Button>
-        </mah:WindowCommands>
-    </mah:MetroWindow.RightWindowCommands>
+    <!-- ... (Commands remain the same) ... -->
     <DockPanel x:Name="MainPanel"
                LastChildFill="True">
+        <!-- Status Bar at bottom -->
+        <StatusBar DockPanel.Dock="Bottom"
+                   Background="#F3F3F3">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}"
+                           FontSize="11"
+                           Foreground="#555" />
+            </StatusBarItem>
+        </StatusBar>
         <DockPanel DockPanel.Dock="Bottom"
                    Margin="10">
             <Button DockPanel.Dock="Right"
@@ -83,14 +62,166 @@
                     Width="120"
                     Margin="0 0 10 0"
                     IsDefault="True"
+                    IsEnabled="{Binding IsLoggedIn}"
                     Click="btnOk_Click" />
         </DockPanel>
         <Grid x:Name="MainGrid">
-            <!-- Content will be added here in Stage 6 -->
-            <TextBlock Text="Đang khởi tạo hệ thống quản lý Family..."
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       FontSize="16" />
+            <!-- NOT LOGGED IN STATE (BRANDED UI - KHỚP IMAGE 0) -->
+            <Grid Visibility="{Binding IsLoggedIn, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                <Grid.Background>
+                    <LinearGradientBrush StartPoint="0.5,0"
+                                         EndPoint="0.5,1">
+                        <GradientStop Color="#FFFFFF"
+                                      Offset="0" />
+                        <GradientStop Color="#F3F4F6"
+                                      Offset="1" />
+                    </LinearGradientBrush>
+                </Grid.Background>
+                <StackPanel VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Width="480">
+                    <!-- Logo Section -->
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Margin="0 0 0 40">
+                        <!-- Logo N (Red) -->
+                        <Border Background="#E32526"
+                                Width="60"
+                                Height="60"
+                                CornerRadius="4">
+                            <TextBlock Text="N"
+                                       Foreground="White"
+                                       FontSize="45"
+                                       FontWeight="ExtraBold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Margin="0,-5,0,0" />
+                        </Border>
+                        <!-- Text NEWTECONS (Blue) -->
+                        <StackPanel Margin="15 5 0 0">
+                            <TextBlock Text="NEWTECONS"
+                                       FontSize="34"
+                                       FontWeight="Bold"
+                                       Foreground="#00548B" />
+                            <Border Background="#00548B"
+                                    Height="1"
+                                    Margin="0,2,0,2" />
+                            <TextBlock Text="B U I L D  O N  T R U S T"
+                                       FontSize="10"
+                                       Foreground="#666"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Right" />
+                        </StackPanel>
+                    </StackPanel>
+                    <!-- Login Card -->
+                    <materialDesign:Card Padding="40"
+                                         materialDesign:ShadowAssist.ShadowDepth="Depth2"
+                                         UniformCornerRadius="8"
+                                         Background="White">
+                        <StackPanel>
+                            <TextBlock Text="Đăng nhập"
+                                       FontSize="28"
+                                       FontWeight="Bold"
+                                       Foreground="#1F2937"
+                                       HorizontalAlignment="Center"
+                                       Margin="0 0 0 10" />
+                            <TextBlock Text="Sử dụng tài khoản Microsoft của bạn để tiếp tục"
+                                       FontSize="14"
+                                       Foreground="#6B7280"
+                                       HorizontalAlignment="Center"
+                                       Margin="0 0 0 35" />
+                            <Button Command="{Binding LoginCommand}"
+                                    Height="50"
+                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Background="#2563EB"
+                                    BorderBrush="{x:Null}"
+                                    materialDesign:ButtonAssist.CornerRadius="6">
+                                <Grid Width="280">
+                                    <!-- Microsoft 4-Color Icon -->
+                                    <Viewbox Width="20"
+                                             Height="20"
+                                             HorizontalAlignment="Left">
+                                        <Grid Width="20"
+                                              Height="20">
+                                            <Rectangle Fill="#F25022"
+                                                       HorizontalAlignment="Left"
+                                                       VerticalAlignment="Top"
+                                                       Width="9"
+                                                       Height="9" />
+                                            <Rectangle Fill="#7FBA00"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Top"
+                                                       Width="9"
+                                                       Height="9" />
+                                            <Rectangle Fill="#00A4EF"
+                                                       HorizontalAlignment="Left"
+                                                       VerticalAlignment="Bottom"
+                                                       Width="9"
+                                                       Height="9" />
+                                            <Rectangle Fill="#FFB900"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Bottom"
+                                                       Width="9"
+                                                       Height="9" />
+                                        </Grid>
+                                    </Viewbox>
+                                    <TextBlock Text="Đăng nhập với Microsoft"
+                                               FontSize="15"
+                                               FontWeight="SemiBold"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </Button>
+                            <TextBlock Text="Cửa sổ đăng nhập Microsoft sẽ mở ra để bạn đăng nhập bằng tài khoản Microsoft của công ty."
+                                       FontSize="12"
+                                       Foreground="#9CA3AF"
+                                       HorizontalAlignment="Center"
+                                       Margin="0 30 0 0"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       LineHeight="18" />
+                        </StackPanel>
+                    </materialDesign:Card>
+                    <TextBlock Text="© 2025 CÔNG TY CỔ PHẦN ĐẦU TƯ XÂY DỰNG NEWTECONS"
+                               FontSize="11"
+                               Foreground="#9CA3AF"
+                               HorizontalAlignment="Center"
+                               Margin="0 50 0 0"
+                               FontWeight="Medium" />
+                </StackPanel>
+            </Grid>
+            <!-- LOGGED IN STATE -->
+            <Grid Visibility="{Binding IsLoggedIn, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel VerticalAlignment="Center"
+                            HorizontalAlignment="Center">
+                    <materialDesign:PackIcon Kind="AccountCheck"
+                                             Width="80"
+                                             Height="80"
+                                             Foreground="#28A745"
+                                             HorizontalAlignment="Center" />
+                    <TextBlock Text="Xin chào,"
+                               FontSize="16"
+                               Foreground="#666"
+                               HorizontalAlignment="Center"
+                               Margin="0 20 0 5" />
+                    <TextBlock Text="{Binding UserName}"
+                               FontSize="24"
+                               FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               Margin="0 0 0 5" />
+                    <TextBlock Text="{Binding UserEmail}"
+                               FontSize="14"
+                               Foreground="#00548B"
+                               HorizontalAlignment="Center" />
+                    <Button Content="ĐĂNG XUẤT"
+                            Margin="0 40 0 0"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Foreground="#E32526"
+                            Visibility="Collapsed" />
+                    <!-- Tạm ẩn nút logout -->
+                </StackPanel>
+            </Grid>
         </Grid>
     </DockPanel>
 </mah:MetroWindow>
