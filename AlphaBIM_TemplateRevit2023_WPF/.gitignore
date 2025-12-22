@@ -1,0 +1,34 @@
+## [Visual Studio]
+.vs/
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userosscache
+*.sln.docattachments
+
+## [NuGet]
+packages/
+*.nuget.props
+*.nuget.targets
+
+## [Revit]
+*.000*.rvt
+*.000*.rfa
+*.recovery.rvt
+*_backup/
+
+## [Build Logs & Temp]
+*.log
+build_log.txt
+build_log_*.txt
+*.tmp
+
+## [OS]
+Thumbs.db
+.DS_Store
+
+## [Nice3point Tool]
+*.addin
+# Note: You can keep .addin if you want it in the repo, 
+# but usually paths in it are local to your machine.
