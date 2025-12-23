@@ -33,8 +33,9 @@
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+            <converters:FileNameConverter x:Key="FileNameConverter" />
             <Style TargetType="{x:Type Button}"
-                   BasedOn="{StaticResource ButtonStyle}" />
+                   BasedOn="{DynamicResource ButtonStyle}" />
         </ResourceDictionary>
     </mah:MetroWindow.Resources>
     <DockPanel x:Name="MainPanel"
@@ -174,7 +175,15 @@
             </Grid>
             <!-- LOGGED IN STATE -->
             <Grid Visibility="{Binding IsLoggedIn, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <views:FamilyExplorerView DataContext="{Binding ExplorerVM}" />
+                <TabControl Style="{DynamicResource MaterialDesignTabControl}"
+                            materialDesign:ColorZoneAssist.Mode="PrimaryMid">
+                    <TabItem Header="THƯ VIỆN FAMILY">
+                        <views:FamilyExplorerView DataContext="{Binding ExplorerVM}" />
+                    </TabItem>
+                    <TabItem Header="GIÁM TUYỂN (FOR ADMIN)">
+                        <views:CuratorView DataContext="{Binding CuratorVM}" />
+                    </TabItem>
+                </TabControl>
             </Grid>
         </Grid>
     </DockPanel>

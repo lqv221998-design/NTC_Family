@@ -17,6 +17,7 @@ using NTC.FamilyManager.Core.Mvvm;
 using NTC.FamilyManager.Core.Interfaces;
 using NTC.FamilyManager.Services.Auth;
 using NTC.FamilyManager.Infrastructure.Revit;
+using NTC.FamilyManager.Services.Family;
 #endregion
 
 namespace NTC.FamilyManager.ViewModels
@@ -28,6 +29,7 @@ namespace NTC.FamilyManager.ViewModels
         private readonly ExternalEvent _externalEvent;
 
         public FamilyExplorerViewModel ExplorerVM { get; }
+        public FamilyCuratorViewModel CuratorVM { get; }
 
         public MainViewModel(UIDocument uiDoc)
         {
@@ -42,6 +44,9 @@ namespace NTC.FamilyManager.ViewModels
             _externalEvent = ExternalEvent.Create(_revitHandler);
 
             ExplorerVM = new FamilyExplorerViewModel(_revitHandler, _externalEvent);
+            
+            var curatorService = new FamilyCuratorService(_revitHandler);
+            CuratorVM = new FamilyCuratorViewModel(curatorService, _revitHandler);
 
             LoginCommand = new RelayCommand(_ => _ = LoginAction());
             
