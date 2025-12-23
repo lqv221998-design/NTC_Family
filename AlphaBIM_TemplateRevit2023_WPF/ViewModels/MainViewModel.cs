@@ -45,7 +45,7 @@ namespace NTC.FamilyManager.ViewModels
 
             ExplorerVM = new FamilyExplorerViewModel(_revitHandler, _externalEvent);
             
-            var curatorService = new FamilyCuratorService(_revitHandler);
+            var curatorService = new FamilyCuratorService(_revitHandler, _externalEvent);
             CuratorVM = new FamilyCuratorViewModel(curatorService, _revitHandler);
 
             LoginCommand = new RelayCommand(_ => _ = LoginAction());

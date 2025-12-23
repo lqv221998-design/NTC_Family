@@ -105,10 +105,10 @@ namespace NTC.FamilyManager.Infrastructure.Revit
                 ImageExportOptions opt = new ImageExportOptions
                 {
                     FilePath = thumbPath,
-                    ImageResolution = ImageResolution.DPI_300,
+                    ImageResolution = ImageResolution.DPI_150, // Giảm DPI để tăng tốc
                     ExportRange = ExportRange.SetOfViews,
                     HLRandWFViewsFileType = ImageFileType.PNG,
-                    PixelSize = 1024,
+                    PixelSize = 512, // Giảm size thumbnail
                     ShouldCreateWebSite = false
                 };
                 opt.SetViewsAndSheets(new List<ElementId> { view3D.Id });

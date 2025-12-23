@@ -3,12 +3,15 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Forms;
+using System.Windows.Threading;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Forms;
 using NTC.FamilyManager.Core.Interfaces;
 using NTC.FamilyManager.Core.Mvvm;
 using NTC.FamilyManager.Core.Models;
 using NTC.FamilyManager.Infrastructure.Revit;
+using Autodesk.Revit.UI;
 
 namespace NTC.FamilyManager.ViewModels
 {
@@ -26,6 +29,7 @@ namespace NTC.FamilyManager.ViewModels
             _revitHandler = revitHandler;
             Proposals = new ObservableCollection<FamilyProcessingResult>();
 
+            SelectFilesCommand = new RelayCommand(_ => SelectFiles());
             SelectFolderCommand = new RelayCommand(_ => SelectFolder());
             CommitAllCommand = new RelayCommand(async _ => await CommitAllAsync());
             CommitSelectedCommand = new RelayCommand(async p => await CommitItemAsync(p as FamilyProcessingResult));
@@ -50,10 +54,22 @@ namespace NTC.FamilyManager.ViewModels
             set => SetProperty(ref _statusMessage, value);
         }
 
+        public ICommand SelectFilesCommand { get; }
         public ICommand SelectFolderCommand { get; }
         public ICommand CommitAllCommand { get; }
         public ICommand CommitSelectedCommand { get; }
         public ICommand RemoveItemCommand { get; }
+
+        private void SelectFiles()
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog();
+            dialog.Filter = "Revit Family (*.rfa)|*.rfa";
+            dialog.Multiselect = true;
+            if (dialog.ShowDialog() == true)
+            {
+                _ = ProcessFilesAsync(dialog.FileNames);
+            }
+        }
 
         private void SelectFolder()
         {
@@ -61,25 +77,27 @@ namespace NTC.FamilyManager.ViewModels
             {
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    _ = ScanFolderAsync(dialog.SelectedPath);
+                    var files = Directory.GetFiles(dialog.SelectedPath, "*.rfa", SearchOption.TopDirectoryOnly);
+                    _ = ProcessFilesAsync(files);
                 }
             }
         }
 
-        private async Task ScanFolderAsync(string path)
+        private async Task ProcessFilesAsync(string[] files)
         {
+            if (files == null || files.Length == 0) return;
+
             IsProcessing = true;
             StatusMessage = "Đang quét và đề xuất tên chuẩn...";
             
             try
             {
-                var files = Directory.GetFiles(path, "*.rfa", SearchOption.TopDirectoryOnly);
                 foreach (var file in files)
                 {
                     var proposal = await _curatorService.AnalyzeFamilyAsync(file);
                     if (proposal != null)
                     {
-                        Proposals.Add(proposal);
+                        System.Windows.Application.Current.Dispatcher.Invoke(() => Proposals.Add(proposal));
                     }
                 }
                 StatusMessage = $"Đã đề xuất {files.Length} file. Mời Admin kiểm duyệt.";

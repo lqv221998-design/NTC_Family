@@ -7,16 +7,19 @@ using System.Threading.Tasks;
 using NTC.FamilyManager.Core.Interfaces;
 using NTC.FamilyManager.Core.Models;
 using NTC.FamilyManager.Infrastructure.Revit;
+using Autodesk.Revit.UI;
 
 namespace NTC.FamilyManager.Services.Family
 {
     public class FamilyCuratorService : IFamilyCuratorService
     {
         private readonly RevitRequestHandler _revitHandler;
+        private readonly ExternalEvent _externalEvent;
 
-        public FamilyCuratorService(RevitRequestHandler revitHandler)
+        public FamilyCuratorService(RevitRequestHandler revitHandler, ExternalEvent externalEvent)
         {
             _revitHandler = revitHandler;
+            _externalEvent = externalEvent;
         }
 
         public async Task<FamilyProcessingResult> AnalyzeFamilyAsync(string filePath)
@@ -25,6 +28,7 @@ namespace NTC.FamilyManager.Services.Family
 
             // 1. Yêu cầu Revit trích xuất Category (Chạy đồng bộ qua ExternalEvent)
             _revitHandler.Raise(RevitRequestType.ExtractMetadata, filePath);
+            _externalEvent.Raise();
             
             // Chờ Revit xử lý xong (Vì đây là ExternalEvent, chúng ta cần đợi IsFinished)
             // Trong thực tế, UI sẽ handle việc chờ này, nhưng ở tầng Service ta có thể check loop

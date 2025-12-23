@@ -38,7 +38,13 @@
                                   Grid.Row="0">
             <StackPanel Orientation="Horizontal">
                 <Button Command="{Binding SelectFolderCommand}"
-                        Content="CHỌN THƯ MỤC FAMILY MỚI"
+                        Content="CHỌN THƯ MỤC"
+                        Style="{DynamicResource MaterialDesignRaisedButton}"
+                        Background="White"
+                        Foreground="{DynamicResource PrimaryHueMidBrush}"
+                        Margin="0,0,10,0" />
+                <Button Command="{Binding SelectFilesCommand}"
+                        Content="CHỌN FILE"
                         Style="{DynamicResource MaterialDesignRaisedButton}"
                         Background="White"
                         Foreground="{DynamicResource PrimaryHueMidBrush}" />
