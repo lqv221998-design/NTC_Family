@@ -71,10 +71,22 @@
                                         Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Image Source="{Binding OriginalPath}"
+                            <Image Source="{Binding ThumbnailPath}"
                                    Height="64"
                                    Width="64"
-                                   Stretch="Uniform" />
+                                   Stretch="Uniform">
+                                <Image.Style>
+                                    <Style TargetType="Image">
+                                        <Style.Triggers>
+                                            <Trigger Property="Source"
+                                                     Value="{x:Null}">
+                                                <Setter Property="Visibility"
+                                                        Value="Collapsed" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Image.Style>
+                            </Image>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
@@ -130,9 +142,12 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="16">
-            <ProgressBar Style="{DynamicResource MaterialDesignCircularProgressBar}"
-                         Value="0"
-                         IsIndeterminate="True"
+            <ProgressBar Style="{DynamicResource MaterialDesignLinearProgressBar}"
+                         Value="{Binding ProgressValue}"
+                         Minimum="0"
+                         Maximum="100"
+                         Width="200"
+                         IsIndeterminate="False"
                          Visibility="{Binding IsProcessing, Converter={StaticResource BooleanToVisibilityConverter}}"
                          Margin="0,0,16,0" />
             <Button Command="{Binding CommitAllCommand}"

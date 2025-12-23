@@ -22,6 +22,7 @@ namespace NTC.FamilyManager.ViewModels
         private ObservableCollection<FamilyProcessingResult> _proposals;
         private bool _isProcessing;
         private string _statusMessage;
+        private double _progressValue;
 
         public FamilyCuratorViewModel(IFamilyCuratorService curatorService, RevitRequestHandler revitHandler)
         {
@@ -52,6 +53,12 @@ namespace NTC.FamilyManager.ViewModels
         {
             get => _statusMessage;
             set => SetProperty(ref _statusMessage, value);
+        }
+
+        public double ProgressValue
+        {
+            get => _progressValue;
+            set => SetProperty(ref _progressValue, value);
         }
 
         public ICommand SelectFilesCommand { get; }
@@ -88,19 +95,27 @@ namespace NTC.FamilyManager.ViewModels
             if (files == null || files.Length == 0) return;
 
             IsProcessing = true;
-            StatusMessage = "Đang quét và đề xuất tên chuẩn...";
-            
             try
             {
-                foreach (var file in files)
+                int total = files.Length;
+                ProgressValue = 0;
+
+                for (int i = 0; i < total; i++)
                 {
+                    string file = files[i];
+                    string fileName = Path.GetFileName(file);
+                    StatusMessage = $"Đang phân tích ({i + 1}/{total}): {fileName}...";
+                    
                     var proposal = await _curatorService.AnalyzeFamilyAsync(file);
                     if (proposal != null)
                     {
                         System.Windows.Application.Current.Dispatcher.Invoke(() => Proposals.Add(proposal));
                     }
+                    
+                    ProgressValue = (double)(i + 1) / total * 100;
                 }
-                StatusMessage = $"Đã đề xuất {files.Length} file. Mời Admin kiểm duyệt.";
+                StatusMessage = $"Đã hoàn thành đề xuất {files.Length} file.";
+                ProgressValue = 100;
             }
             finally
             {

@@ -26,15 +26,37 @@ namespace NTC.FamilyManager.Services.Family
         {
             if (!File.Exists(filePath)) return null;
 
-            // 1. Yêu cầu Revit trích xuất Category (Chạy đồng bộ qua ExternalEvent)
-            _revitHandler.Raise(RevitRequestType.ExtractMetadata, filePath);
+            // 1. Gửi yêu cầu tới Revit và await Task (Elite Pattern)
+            var revitTask = _revitHandler.Raise(RevitRequestType.ExtractMetadata, filePath);
             _externalEvent.Raise();
             
-            // Chờ Revit xử lý xong (Vì đây là ExternalEvent, chúng ta cần đợi IsFinished)
-            // Trong thực tế, UI sẽ handle việc chờ này, nhưng ở tầng Service ta có thể check loop
-            while (!_revitHandler.IsFinished)
+            try 
             {
-                await Task.Delay(100);
+                // Timeout 30s cho mỗi file
+                if (await Task.WhenAny(revitTask, Task.Delay(30000)) != revitTask)
+                {
+                    return new FamilyProcessingResult
+                    {
+                        OriginalPath = filePath,
+                        FamilyName = Path.GetFileNameWithoutExtension(filePath),
+                        Category = "Timeout",
+                        Status = ProcessingStatus.Failed,
+                        Message = "Revit không phản hồi sau 30 giây."
+                    };
+                }
+
+                await revitTask; // Đảm bảo bắt được exception nếu có
+            }
+            catch (Exception ex)
+            {
+                return new FamilyProcessingResult
+                {
+                    OriginalPath = filePath,
+                    FamilyName = Path.GetFileNameWithoutExtension(filePath),
+                    Category = "Error",
+                    Status = ProcessingStatus.Failed,
+                    Message = $"Lỗi Revit: {ex.Message}"
+                };
             }
 
             string category = _revitHandler.ExtractedCategory;
@@ -52,46 +74,59 @@ namespace NTC.FamilyManager.Services.Family
                 FamilyName = proposedName,
                 Category = category,
                 Discipline = discipline,
+                ThumbnailPath = _revitHandler.ExtractedThumbnailPath,
                 Status = ProcessingStatus.Pending
             };
         }
 
         public async Task<bool> CommitStandardizationAsync(FamilyProcessingResult proposal)
         {
-            try
+            // Retry logic (3 lần) để dập tắt lỗi file bị khóa
+            for (int i = 0; i < 3; i++)
             {
-                string targetDir = Path.Combine(
-                    Path.GetDirectoryName(proposal.OriginalPath), 
-                    "Standardized", 
-                    proposal.Discipline, 
-                    proposal.Category);
-
-                if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
-
-                string targetPath = Path.Combine(targetDir, proposal.FamilyName + ".rfa");
-
-                // Thực hiện di chuyển file RFA
-                File.Move(proposal.OriginalPath, targetPath);
-
-                // Đồng bộ Thumbnail (nếu có file _3D.png được tạo từ RevitRequestHandler)
-                string oldThumb = Path.Combine(Path.GetDirectoryName(proposal.OriginalPath), Path.GetFileNameWithoutExtension(proposal.OriginalPath) + "_3D.png");
-                if (File.Exists(oldThumb))
+                try
                 {
-                    string newThumb = Path.Combine(targetDir, proposal.FamilyName + ".png");
-                    if (File.Exists(newThumb)) File.Delete(newThumb);
-                    File.Move(oldThumb, newThumb);
-                }
+                    string targetDir = Path.Combine(
+                        Path.GetDirectoryName(proposal.OriginalPath), 
+                        "Standardized", 
+                        proposal.Discipline, 
+                        proposal.Category);
 
-                proposal.NewPath = targetPath;
-                proposal.Status = ProcessingStatus.Succeeded;
-                return true;
+                    if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
+
+                    string targetPath = Path.Combine(targetDir, proposal.FamilyName + ".rfa");
+
+                    // 1. Di chuyển file RFA
+                    if (File.Exists(targetPath)) File.Delete(targetPath);
+                    File.Move(proposal.OriginalPath, targetPath);
+
+                    // 2. Đồng bộ Thumbnail
+                    string oldThumb = Path.Combine(Path.GetDirectoryName(proposal.OriginalPath), Path.GetFileNameWithoutExtension(proposal.OriginalPath) + "_3D.png");
+                    if (File.Exists(oldThumb))
+                    {
+                        string newThumb = Path.Combine(targetDir, proposal.FamilyName + ".png");
+                        if (File.Exists(newThumb)) File.Delete(newThumb);
+                        File.Move(oldThumb, newThumb);
+                    }
+
+                    proposal.NewPath = targetPath;
+                    proposal.Status = ProcessingStatus.Succeeded;
+                    proposal.Message = "Thành công";
+                    return true;
+                }
+                catch (IOException ex) when (i < 2)
+                {
+                    // Đợi 1 giây rồi thử lại nếu file bị khóa
+                    await Task.Delay(1000);
+                }
+                catch (Exception ex)
+                {
+                    proposal.Status = ProcessingStatus.Failed;
+                    proposal.Message = ex.Message;
+                    return false;
+                }
             }
-            catch (Exception ex)
-            {
-                proposal.Status = ProcessingStatus.Failed;
-                proposal.Message = ex.Message;
-                return false;
-            }
+            return false;
         }
 
         public Task<bool> CheckDuplicatesAsync(FamilyProcessingResult proposal)

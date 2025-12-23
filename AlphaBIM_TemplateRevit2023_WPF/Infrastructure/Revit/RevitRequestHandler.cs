@@ -19,17 +19,32 @@ namespace NTC.FamilyManager.Infrastructure.Revit
         public RevitRequestType RequestType { get; set; } = RevitRequestType.None;
         public string FamilyPath { get; set; }
         public string ExtractedCategory { get; private set; }
-        public bool IsFinished { get; private set; } = true;
+        public string ExtractedThumbnailPath { get; private set; }
+        private volatile bool _isFinished = true;
+        public bool IsFinished 
+        { 
+            get => _isFinished; 
+            private set => _isFinished = value; 
+        }
 
-        public void Raise(RevitRequestType type, string path)
+        private System.Threading.Tasks.TaskCompletionSource<bool> _tcs;
+        private readonly object _lock = new object();
+
+        public System.Threading.Tasks.Task<bool> Raise(RevitRequestType type, string path)
         {
-            RequestType = type;
-            FamilyPath = path;
-            IsFinished = false;
+            lock (_lock)
+            {
+                RequestType = type;
+                FamilyPath = path;
+                _tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+                IsFinished = false;
+                return _tcs.Task;
+            }
         }
 
         public void Execute(UIApplication app)
         {
+            app.Application.FailuresProcessing += OnFailuresProcessing;
             try
             {
                 switch (RequestType)
@@ -41,11 +56,36 @@ namespace NTC.FamilyManager.Infrastructure.Revit
                         ExecuteExtractMetadata(app);
                         break;
                 }
+                _tcs?.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                _tcs?.TrySetException(ex);
             }
             finally
             {
+                app.Application.FailuresProcessing -= OnFailuresProcessing;
                 IsFinished = true;
                 RequestType = RevitRequestType.None;
+            }
+        }
+
+        private void OnFailuresProcessing(object sender, Autodesk.Revit.DB.Events.FailuresProcessingEventArgs e)
+        {
+            FailuresAccessor failuresAccessor = e.GetFailuresAccessor();
+            var failList = failuresAccessor.GetFailureMessages();
+            if (failList.Count == 0) return;
+
+            foreach (var failure in failList)
+            {
+                if (failure.GetSeverity() == FailureSeverity.Warning)
+                {
+                    failuresAccessor.DeleteWarning(failure);
+                }
+                else
+                {
+                    e.SetProcessingResult(FailureProcessingResult.ProceedWithRollBack);
+                }
             }
         }
 
@@ -68,21 +108,52 @@ namespace NTC.FamilyManager.Infrastructure.Revit
             
             try
             {
-                // Open family file invisibly
-                Document familyDoc = app.Application.OpenDocumentFile(FamilyPath);
-                if (familyDoc != null && familyDoc.IsFamilyDocument)
+                // 1. Cố gắng trích xuất Category bằng PartAtom (siêu tốc, không mở file)
+                string tempXml = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".xml");
+                try 
                 {
-                    ExtractedCategory = familyDoc.OwnerFamily.FamilyCategory.Name;
-                    
-                    // Lấy Thumbnail 3D thực tế
-                    Export3DThumbnail(familyDoc);
+                    app.Application.ExtractPartAtomFromFamilyFile(FamilyPath, tempXml);
+                    if (File.Exists(tempXml))
+                    {
+                        string xmlContent = File.ReadAllText(tempXml);
+                        var match = System.Text.RegularExpressions.Regex.Match(xmlContent, @"<category>(.*?)</category>");
+                        if (match.Success)
+                        {
+                            ExtractedCategory = match.Groups[1].Value;
+                        }
+                        File.Delete(tempXml);
+                    }
+                }
+                catch { /* Fallback to opening file if PartAtom fails */ }
 
-                    familyDoc.Close(false);
+                // 2. Mở file để lấy Thumbnail (chỉ khi thực sự cần thiết)
+                // Dùng OpenOptions để chặn các cảnh báo
+                OpenOptions opt = new OpenOptions();
+                ModelPath mPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(FamilyPath);
+                
+                Document familyDoc = app.Application.OpenDocumentFile(mPath, opt);
+                if (familyDoc != null)
+                {
+                    try
+                    {
+                        if (familyDoc.IsFamilyDocument)
+                        {
+                            if (string.IsNullOrEmpty(ExtractedCategory))
+                                ExtractedCategory = familyDoc.OwnerFamily?.FamilyCategory?.Name ?? "General";
+                        
+                            Export3DThumbnail(familyDoc);
+                        }
+                    }
+                    finally
+                    {
+                        familyDoc.Close(false);
+                    }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                ExtractedCategory = "Unknown";
+                if (string.IsNullOrEmpty(ExtractedCategory)) ExtractedCategory = "Unknown";
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
             }
         }
 
@@ -114,6 +185,7 @@ namespace NTC.FamilyManager.Infrastructure.Revit
                 opt.SetViewsAndSheets(new List<ElementId> { view3D.Id });
 
                 familyDoc.ExportImage(opt);
+                ExtractedThumbnailPath = thumbPath + ".png";
             }
             catch { /* Ignore if fails */ }
         }
