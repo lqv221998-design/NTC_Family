@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using NTC.FamilyManager.Models;
 
-namespace NTC.FamilyManager.Base
+namespace NTC.FamilyManager.Core.Interfaces
 {
     public interface ISharePointService
     {

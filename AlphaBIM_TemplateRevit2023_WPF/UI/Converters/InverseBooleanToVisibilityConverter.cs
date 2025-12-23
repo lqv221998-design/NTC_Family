@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 
-namespace NTC.FamilyManager
+namespace NTC.FamilyManager.UI.Converters
 {
     public class InverseBooleanToVisibilityConverter : IValueConverter
     {

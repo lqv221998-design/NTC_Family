@@ -13,11 +13,13 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using System.Windows.Input;
 using System.Threading.Tasks;
-using NTC.FamilyManager.Base;
-using NTC.FamilyManager.ViewModels;
+using NTC.FamilyManager.Core.Mvvm;
+using NTC.FamilyManager.Core.Interfaces;
+using NTC.FamilyManager.Services.Auth;
+using NTC.FamilyManager.Infrastructure.Revit;
 #endregion
 
-namespace NTC.FamilyManager
+namespace NTC.FamilyManager.ViewModels
 {
     public class MainViewModel : ViewModelBase
     {

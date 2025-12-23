@@ -3,7 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace NTC.FamilyManager.Base
+namespace NTC.FamilyManager.Services.Auth.Helpers
 {
     public static class TokenCacheHelper
     {

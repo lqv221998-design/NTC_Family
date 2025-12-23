@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Input;
 
-namespace NTC.FamilyManager
+namespace NTC.FamilyManager.Core.Mvvm
 {
     public class RelayCommand : ICommand
     {

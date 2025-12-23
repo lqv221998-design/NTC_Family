@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace NTC.FamilyManager
+namespace NTC.FamilyManager.Core.Mvvm
 {
     public abstract class ViewModelBase : INotifyPropertyChanged
     {

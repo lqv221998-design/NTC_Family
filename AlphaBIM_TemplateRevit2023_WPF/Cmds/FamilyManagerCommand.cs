@@ -7,6 +7,9 @@ using System.Reflection;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using NTC.FamilyManager.Infrastructure.Revit;
+using NTC.FamilyManager.ViewModels;
+using NTC.FamilyManager.Views;
 using Application = Autodesk.Revit.ApplicationServices.Application;
 
 #endregion

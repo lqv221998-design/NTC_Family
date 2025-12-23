@@ -2,7 +2,7 @@ using System;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.DB;
 
-namespace NTC.FamilyManager.Base
+namespace NTC.FamilyManager.Infrastructure.Revit
 {
     public class RevitRequestHandler : IExternalEventHandler
     {
@@ -23,11 +23,7 @@ namespace NTC.FamilyManager.Base
                     bool loaded = doc.LoadFamily(FamilyPath, out Family family);
                     if (loaded)
                     {
-                        // Success, we can also prompt to place it
-                        // TaskDialog.Show("Success", $"Loaded family: {family.Name}");
-                        
-                        // Optional: Activate placement
-                        // uiDoc.PostRequestForPlacement(family.GetFamilySymbolIds().First().ToElement(doc) as FamilySymbol);
+                        // Family loaded successfully
                     }
                     trans.Commit();
                 }

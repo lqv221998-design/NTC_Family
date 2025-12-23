@@ -5,18 +5,18 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Windows;
 using Newtonsoft.Json;
+using NTC.FamilyManager.Core.Interfaces;
+using NTC.FamilyManager.Services.Auth.Helpers;
 using NTC.FamilyManager.Views;
 
-namespace NTC.FamilyManager.Base
+namespace NTC.FamilyManager.Services.Auth
 {
     public class AuthService : IAuthService
     {
-        // Cho phép IT cấu hình sau này mà không cần sửa code core
         public static string ClientId { get; set; } = "4a1aa350-ad1c-4340-a92c-05574044414e";
         public static string TenantId { get; set; } = "ac5781b0-bb44-456b-93b8-a6c9dd7a9989";
         public static string RedirectUri { get; set; } = "http://localhost";
         
-        // Chế độ dành cho Developer hoặc khi chưa có IT cấu hình Azure AD
         public static bool IsMockMode { get; set; } = false;
 
         private readonly string[] _scopes = { "User.Read", "Files.Read.All", "Sites.Read.All" };
@@ -40,10 +40,8 @@ namespace NTC.FamilyManager.Base
 
             try
             {
-                // 1. Try silent login first
                 if (await TrySilentLoginAsync()) return true;
 
-                // 2. Interactive Login via WebView2
                 string scopesStr = string.Join(" ", _scopes);
                 string authUrl = $"https://login.microsoftonline.com/{TenantId}/oauth2/v2.0/authorize?" +
                                 $"client_id={ClientId}&response_type=code&redirect_uri={RedirectUri}&" +
@@ -147,7 +145,7 @@ namespace NTC.FamilyManager.Base
         {
             using (var client = new HttpClient())
             {
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
                 var response = await client.GetAsync("https://graph.microsoft.com/v1.0/me");
                 
                 if (response.IsSuccessStatusCode)

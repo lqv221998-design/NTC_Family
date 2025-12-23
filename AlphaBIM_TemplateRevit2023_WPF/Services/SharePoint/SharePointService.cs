@@ -4,9 +4,10 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using NTC.FamilyManager.Core.Interfaces;
 using NTC.FamilyManager.Models;
 
-namespace NTC.FamilyManager.Base
+namespace NTC.FamilyManager.Services.SharePoint
 {
     public class SharePointService : ISharePointService
     {
@@ -30,7 +31,6 @@ namespace NTC.FamilyManager.Base
             {
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 
-                // Graph API for files in a drive
                 string url = $"https://graph.microsoft.com/v1.0/sites/{siteId}/drives/{driveId}/root/children";
                 if (!string.IsNullOrEmpty(folderPath))
                 {
@@ -54,16 +54,12 @@ namespace NTC.FamilyManager.Base
                                 Name = name,
                                 DownloadUrl = item["@microsoft.graph.downloadUrl"],
                                 LastModified = item.lastModifiedDateTime,
-                                // TODO: Parse category from folder path or metadata
                             });
                         }
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                // Log or handle error
-            }
+            catch (Exception) { }
 
             return families;
         }
@@ -86,7 +82,6 @@ namespace NTC.FamilyManager.Base
 
         public async Task<byte[]> GetThumbnailAsync(FamilyItem item)
         {
-            // TODO: Implement thumbnail fetching from Graph API
             return null;
         }
     }

@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
-using System.Collections.Generic;
 
-namespace NTC.FamilyManager.Base
+namespace NTC.FamilyManager.Core.Interfaces
 {
     public interface IAuthService
     {

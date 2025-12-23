@@ -5,7 +5,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using NTC.FamilyManager.Models;
-using NTC.FamilyManager.Base;
+using NTC.FamilyManager.Core.Mvvm;
+using NTC.FamilyManager.Core.Interfaces;
+using NTC.FamilyManager.Services.Family;
+using NTC.FamilyManager.Infrastructure.Revit;
 using Autodesk.Revit.UI;
 
 namespace NTC.FamilyManager.ViewModels

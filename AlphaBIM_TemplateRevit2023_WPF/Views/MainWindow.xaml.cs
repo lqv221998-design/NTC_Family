@@ -7,7 +7,9 @@ using System.Windows;
 using System.Windows.Input;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
-namespace NTC.FamilyManager
+using NTC.FamilyManager.ViewModels;
+
+namespace NTC.FamilyManager.Views
 {
     public partial class MainWindow : MahApps.Metro.Controls.MetroWindow
     {
