@@ -1,0 +1,21 @@
+{
+  "Authentication": {
+    "TenantId": "ac5781b0-bb44-456b-93b8-a6c9dd7a9989",
+    "ClientId": "4a1aa350-ad1c-4340-a92c-05574044414e",
+    "RedirectUri": "http://localhost",
+    "Scopes": [
+      "User.Read",
+      "Files.Read.All",
+      "Sites.Read.All"
+    ]
+  },
+  "SharePoint": {
+    "SiteId": "newtecons.sharepoint.com,xxxx-xxxx-xxxx",
+    "DriveId": "b!xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "RootFolder": "FamilyLibrary"
+  },
+  "Application": {
+    "IsMockMode": true,
+    "AppVersion": "1.0.0"
+  }
+}

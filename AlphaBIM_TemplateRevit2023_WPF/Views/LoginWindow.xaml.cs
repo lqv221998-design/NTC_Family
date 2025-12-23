@@ -24,13 +24,22 @@ namespace NTC.FamilyManager.Views
         {
             try
             {
-                await webView.EnsureCoreWebView2Async();
+                // Cấu hình UserDataFolder riêng biệt cho Revit Plugin
+                // Nếu không cấu hình, WebView2 sẽ cố tạo trong thư mục cài đặt Revit (Program Files) và thất bại
+                string userDataFolder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "NTC_FamilyManager", 
+                    "WebView2");
+
+                var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                await webView.EnsureCoreWebView2Async(env);
+
                 webView.CoreWebView2.SourceChanged += CoreWebView2_SourceChanged;
                 webView.Source = new Uri(_startUrl);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Không thể khởi tạo trình duyệt: " + ex.Message);
+                MessageBox.Show("Không thể khởi tạo trình duyệt: " + ex.Message + "\n" + ex.StackTrace);
                 this.Close();
             }
         }

@@ -7,9 +7,10 @@
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  mc:Ignorable="d"
                  xmlns:local="clr-namespace:NTC.FamilyManager"
-                 d:DataContext="{d:DesignInstance local:MainViewModel}"
                  xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+                 xmlns:views="clr-namespace:NTC.FamilyManager.Views"
+                 d:DataContext="{d:DesignInstance local:MainViewModel}"
                  KeyDown="MainWindow_KeyDown"
                  Title="Newtecons - SharePoint Family Management"
                  ResizeMode="CanResize"
@@ -17,7 +18,7 @@
                  WindowStartupLocation="CenterScreen"
                  Height="600"
                  Width="800"
-                 MinHeight="400 "
+                 MinHeight="400"
                  MinWidth="500"
                  Topmost="True">
     <mah:MetroWindow.Resources>
@@ -35,10 +36,9 @@
                    BasedOn="{StaticResource ButtonStyle}" />
         </ResourceDictionary>
     </mah:MetroWindow.Resources>
-    <!-- ... (Commands remain the same) ... -->
     <DockPanel x:Name="MainPanel"
                LastChildFill="True">
-        <!-- Status Bar at bottom -->
+        <!-- Status Bar -->
         <StatusBar DockPanel.Dock="Bottom"
                    Background="#F3F3F3">
             <StatusBarItem>
@@ -47,26 +47,9 @@
                            Foreground="#555" />
             </StatusBarItem>
         </StatusBar>
-        <DockPanel DockPanel.Dock="Bottom"
-                   Margin="10">
-            <Button DockPanel.Dock="Right"
-                    VerticalAlignment="Bottom"
-                    Content="THOÁT"
-                    Width="100"
-                    Click="btnCancel_Click"
-                    IsCancel="True" />
-            <Button DockPanel.Dock="Right"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Bottom"
-                    Content="TẢI FAMILY"
-                    Width="120"
-                    Margin="0 0 10 0"
-                    IsDefault="True"
-                    IsEnabled="{Binding IsLoggedIn}"
-                    Click="btnOk_Click" />
-        </DockPanel>
+        <!-- Main Content Area -->
         <Grid x:Name="MainGrid">
-            <!-- NOT LOGGED IN STATE (BRANDED UI - KHỚP IMAGE 0) -->
+            <!-- NOT LOGGED IN STATE -->
             <Grid Visibility="{Binding IsLoggedIn, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                 <Grid.Background>
                     <LinearGradientBrush StartPoint="0.5,0"
@@ -80,11 +63,10 @@
                 <StackPanel VerticalAlignment="Center"
                             HorizontalAlignment="Center"
                             Width="480">
-                    <!-- Logo Section -->
+                    <!-- Branded Logo Section -->
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center"
-                                Margin="0 0 0 40">
-                        <!-- Logo N (Red) -->
+                                Margin="0,0,0,40">
                         <Border Background="#E32526"
                                 Width="60"
                                 Height="60"
@@ -97,8 +79,7 @@
                                        VerticalAlignment="Center"
                                        Margin="0,-5,0,0" />
                         </Border>
-                        <!-- Text NEWTECONS (Blue) -->
-                        <StackPanel Margin="15 5 0 0">
+                        <StackPanel Margin="15,5,0,0">
                             <TextBlock Text="NEWTECONS"
                                        FontSize="34"
                                        FontWeight="Bold"
@@ -124,20 +105,19 @@
                                        FontWeight="Bold"
                                        Foreground="#1F2937"
                                        HorizontalAlignment="Center"
-                                       Margin="0 0 0 10" />
+                                       Margin="0,0,0,10" />
                             <TextBlock Text="Sử dụng tài khoản Microsoft của bạn để tiếp tục"
                                        FontSize="14"
                                        Foreground="#6B7280"
                                        HorizontalAlignment="Center"
-                                       Margin="0 0 0 35" />
+                                       Margin="0,0,0,35" />
                             <Button Command="{Binding LoginCommand}"
                                     Height="50"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                    Style="{DynamicResource MaterialDesignRaisedButton}"
                                     Background="#2563EB"
                                     BorderBrush="{x:Null}"
                                     materialDesign:ButtonAssist.CornerRadius="6">
                                 <Grid Width="280">
-                                    <!-- Microsoft 4-Color Icon -->
                                     <Viewbox Width="20"
                                              Height="20"
                                              HorizontalAlignment="Left">
@@ -177,7 +157,7 @@
                                        FontSize="12"
                                        Foreground="#9CA3AF"
                                        HorizontalAlignment="Center"
-                                       Margin="0 30 0 0"
+                                       Margin="0,30,0,0"
                                        TextWrapping="Wrap"
                                        TextAlignment="Center"
                                        LineHeight="18" />
@@ -187,40 +167,13 @@
                                FontSize="11"
                                Foreground="#9CA3AF"
                                HorizontalAlignment="Center"
-                               Margin="0 50 0 0"
+                               Margin="0,50,0,0"
                                FontWeight="Medium" />
                 </StackPanel>
             </Grid>
             <!-- LOGGED IN STATE -->
             <Grid Visibility="{Binding IsLoggedIn, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <StackPanel VerticalAlignment="Center"
-                            HorizontalAlignment="Center">
-                    <materialDesign:PackIcon Kind="AccountCheck"
-                                             Width="80"
-                                             Height="80"
-                                             Foreground="#28A745"
-                                             HorizontalAlignment="Center" />
-                    <TextBlock Text="Xin chào,"
-                               FontSize="16"
-                               Foreground="#666"
-                               HorizontalAlignment="Center"
-                               Margin="0 20 0 5" />
-                    <TextBlock Text="{Binding UserName}"
-                               FontSize="24"
-                               FontWeight="Bold"
-                               HorizontalAlignment="Center"
-                               Margin="0 0 0 5" />
-                    <TextBlock Text="{Binding UserEmail}"
-                               FontSize="14"
-                               Foreground="#00548B"
-                               HorizontalAlignment="Center" />
-                    <Button Content="ĐĂNG XUẤT"
-                            Margin="0 40 0 0"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Foreground="#E32526"
-                            Visibility="Collapsed" />
-                    <!-- Tạm ẩn nút logout -->
-                </StackPanel>
+                <views:FamilyExplorerView DataContext="{Binding ExplorerVM}" />
             </Grid>
         </Grid>
     </DockPanel>

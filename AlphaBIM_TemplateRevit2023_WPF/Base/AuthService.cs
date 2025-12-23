@@ -11,9 +11,14 @@ namespace NTC.FamilyManager.Base
 {
     public class AuthService : IAuthService
     {
-        private readonly string _clientId = "4a1aa350-ad1c-4340-a92c-05574044414e";
-        private readonly string _tenantId = "ac5781b0-bb44-456b-93b8-a6c9dd7a9989";
-        private readonly string _redirectUri = "http://localhost";
+        // Cho phép IT cấu hình sau này mà không cần sửa code core
+        public static string ClientId { get; set; } = "4a1aa350-ad1c-4340-a92c-05574044414e";
+        public static string TenantId { get; set; } = "ac5781b0-bb44-456b-93b8-a6c9dd7a9989";
+        public static string RedirectUri { get; set; } = "http://localhost";
+        
+        // Chế độ dành cho Developer hoặc khi chưa có IT cấu hình Azure AD
+        public static bool IsMockMode { get; set; } = false;
+
         private readonly string[] _scopes = { "User.Read", "Files.Read.All", "Sites.Read.All" };
         
         private string _accessToken;
@@ -25,6 +30,14 @@ namespace NTC.FamilyManager.Base
 
         public async Task<bool> LoginAsync()
         {
+            if (IsMockMode)
+            {
+                UserName = "Developer NTC";
+                UserEmail = "dev@newtecons.vn";
+                IsAuthenticated = true;
+                return true;
+            }
+
             try
             {
                 // 1. Try silent login first
@@ -32,17 +45,17 @@ namespace NTC.FamilyManager.Base
 
                 // 2. Interactive Login via WebView2
                 string scopesStr = string.Join(" ", _scopes);
-                string authUrl = $"https://login.microsoftonline.com/{_tenantId}/oauth2/v2.0/authorize?" +
-                                $"client_id={_clientId}&response_type=code&redirect_uri={_redirectUri}&" +
+                string authUrl = $"https://login.microsoftonline.com/{TenantId}/oauth2/v2.0/authorize?" +
+                                $"client_id={ClientId}&response_type=code&redirect_uri={RedirectUri}&" +
                                 $"response_mode=query&scope={Uri.EscapeDataString(scopesStr)}";
 
-                var loginWin = new LoginWindow(authUrl, _redirectUri);
+                var loginWin = new LoginWindow(authUrl, RedirectUri);
                 if (loginWin.ShowDialog() == true && !string.IsNullOrEmpty(loginWin.AuthCode))
                 {
                     bool success = await ExchangeCodeForTokenAsync(loginWin.AuthCode);
                     if (success)
                     {
-                        TokenCacheHelper.SaveToken(_refreshToken); // Lưu refresh token để dùng sau
+                        TokenCacheHelper.SaveToken(_refreshToken);
                     }
                     return success;
                 }
@@ -60,14 +73,14 @@ namespace NTC.FamilyManager.Base
             {
                 var dict = new Dictionary<string, string>
                 {
-                    {"client_id", _clientId},
+                    {"client_id", ClientId},
                     {"scope", string.Join(" ", _scopes)},
                     {"code", code},
-                    {"redirect_uri", _redirectUri},
+                    {"redirect_uri", RedirectUri},
                     {"grant_type", "authorization_code"}
                 };
 
-                var response = await client.PostAsync($"https://login.microsoftonline.com/{_tenantId}/oauth2/v2.0/token", 
+                var response = await client.PostAsync($"https://login.microsoftonline.com/{TenantId}/oauth2/v2.0/token", 
                     new FormUrlEncodedContent(dict));
                 
                 if (response.IsSuccessStatusCode)
@@ -100,13 +113,13 @@ namespace NTC.FamilyManager.Base
                 {
                     var dict = new Dictionary<string, string>
                     {
-                        {"client_id", _clientId},
+                        {"client_id", ClientId},
                         {"scope", string.Join(" ", _scopes)},
                         {"refresh_token", refreshToken},
                         {"grant_type", "refresh_token"}
                     };
 
-                    var response = await client.PostAsync($"https://login.microsoftonline.com/{_tenantId}/oauth2/v2.0/token", 
+                    var response = await client.PostAsync($"https://login.microsoftonline.com/{TenantId}/oauth2/v2.0/token", 
                         new FormUrlEncodedContent(dict));
                     
                     if (response.IsSuccessStatusCode)
@@ -115,7 +128,7 @@ namespace NTC.FamilyManager.Base
                         var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(json);
                         
                         _accessToken = tokenResponse.AccessToken;
-                        _refreshToken = tokenResponse.RefreshToken ?? refreshToken; // MS doesn't always return a new RT
+                        _refreshToken = tokenResponse.RefreshToken ?? refreshToken;
                         
                         bool success = await ProcessUserInfoAsync();
                         if (success)
@@ -140,16 +153,14 @@ namespace NTC.FamilyManager.Base
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    dynamic user = JsonConvert.DeserializeObject(json);
+                    var user = JsonConvert.DeserializeObject<dynamic>(json);
                     
                     string email = user.userPrincipalName ?? user.mail;
                     if (string.IsNullOrEmpty(email)) return false;
 
-                    // Domain Validation
                     if (!email.EndsWith("@newtecons.vn") && !email.EndsWith("@ntc.vn"))
                     {
-                        MessageBox.Show("Vui lòng sử dụng tài khoản email của Newtecons (@newtecons.vn hoặc @ntc.vn).", 
-                            "Sai Domain", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show("Vui lòng sử dụng tài khoản email của Newtecons.", "Sai Domain", MessageBoxButton.OK, MessageBoxImage.Warning);
                         Logout();
                         return false;
                     }

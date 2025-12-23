@@ -14,6 +14,7 @@ using Autodesk.Revit.UI.Selection;
 using System.Windows.Input;
 using System.Threading.Tasks;
 using NTC.FamilyManager.Base;
+using NTC.FamilyManager.ViewModels;
 #endregion
 
 namespace NTC.FamilyManager
@@ -21,13 +22,25 @@ namespace NTC.FamilyManager
     public class MainViewModel : ViewModelBase
     {
         private readonly IAuthService _authService;
+        private readonly RevitRequestHandler _revitHandler;
+        private readonly ExternalEvent _externalEvent;
+
+        public FamilyExplorerViewModel ExplorerVM { get; }
 
         public MainViewModel(UIDocument uiDoc)
         {
             UiDoc = uiDoc;
             Doc = UiDoc.Document;
 
+            // Bật Mock Mode để phát triển UI
+            AuthService.IsMockMode = true;
             _authService = new AuthService();
+            
+            _revitHandler = new RevitRequestHandler();
+            _externalEvent = ExternalEvent.Create(_revitHandler);
+
+            ExplorerVM = new FamilyExplorerViewModel(_revitHandler, _externalEvent);
+
             LoginCommand = new RelayCommand(_ => _ = LoginAction());
             
             StatusMessage = "Vui lòng đăng nhập để tiếp tục.";
@@ -35,13 +48,12 @@ namespace NTC.FamilyManager
 
         public ICommand LoginCommand { get; }
 
-        private async System.Threading.Tasks.Task LoginAction()
+        private async Task LoginAction()
         {
-            StatusMessage = "Đang khởi tạo trình đăng nhập Microsoft...";
+            StatusMessage = "Đang kết nối...";
             
             try
             {
-                // Gọi LoginAsync mà không cần truyền email trước (Cửa sổ MS sẽ tự hỏi)
                 bool success = await _authService.LoginAsync();
                 
                 if (success)
@@ -51,7 +63,8 @@ namespace NTC.FamilyManager
                     IsLoggedIn = true;
                     StatusMessage = "Đăng nhập thành công!";
 
-                    // TODO: Khởi tạo dữ liệu SharePoint sau khi đăng nhập thành công
+                    // Sau khi đăng nhập, load dữ liệu
+                    _ = ExplorerVM.LoadFamiliesAsync();
                 }
                 else
                 {
@@ -64,7 +77,6 @@ namespace NTC.FamilyManager
                 StatusMessage = "Lỗi xác thực: " + ex.Message;
                 IsLoggedIn = false;
                 
-                // Nếu lỗi liên quan đến nạp DLL, gợi ý người dùng khởi động lại Revit
                 if (ex.Message.Contains("DiagnosticSource") || ex.Message.Contains("Meter"))
                 {
                     StatusMessage = "Lỗi thư viện hệ thống. Vui lòng khởi động lại Revit.";
@@ -76,8 +88,6 @@ namespace NTC.FamilyManager
 
         public UIDocument UiDoc { get; }
         public Document Doc { get; }
-
-        // Đã gỡ UserEmailInput theo Image 0
 
         private string _userName;
         public string UserName
