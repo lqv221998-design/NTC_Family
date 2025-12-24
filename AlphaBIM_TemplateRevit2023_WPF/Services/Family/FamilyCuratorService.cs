@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using NTC.FamilyManager.Core.Interfaces;
 using NTC.FamilyManager.Core.Models;
 using NTC.FamilyManager.Infrastructure.Revit;
+using NTC.FamilyManager.Services.Naming;
+using NTC.FamilyManager.Services.Thumbnails;
 using Autodesk.Revit.UI;
 
 namespace NTC.FamilyManager.Services.Family
@@ -15,24 +17,74 @@ namespace NTC.FamilyManager.Services.Family
     {
         private readonly RevitRequestHandler _revitHandler;
         private readonly ExternalEvent _externalEvent;
+        private readonly SmartNameGenerator _smartNamer;
+        private readonly OleThumbnailExtractor _oleExtractor;
 
         public FamilyCuratorService(RevitRequestHandler revitHandler, ExternalEvent externalEvent)
         {
             _revitHandler = revitHandler;
             _externalEvent = externalEvent;
+            _smartNamer = new SmartNameGenerator();
+            _oleExtractor = new OleThumbnailExtractor();
         }
 
         public async Task<FamilyProcessingResult> AnalyzeFamilyAsync(string filePath)
         {
             if (!File.Exists(filePath)) return null;
 
-            // 1. Gửi yêu cầu tới Revit và await Task (Elite Pattern)
+            string tempThumbPath = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(filePath) + "_3D.png");
+            string proposedFamilyName = null;
+            string category = null;
+            string discipline = null;
+            bool thumbnailExtracted = false;
+
+            // --- PHASE 1: INTELLIGENT SPEED (JSON & OLE) ---
+            try 
+            {
+                // 1.1 Try Smart Naming (JSON)
+                var namingResult = _smartNamer.SuggestName(filePath);
+                if (!string.IsNullOrEmpty(namingResult.ProposedName))
+                {
+                    proposedFamilyName = namingResult.ProposedName;
+                    category = namingResult.Category;
+                    discipline = namingResult.Discipline;
+                }
+
+                // 1.2 Try Fast Thumbnail (OLE)
+                if (_oleExtractor.TryExtractThumbnail(filePath, tempThumbPath))
+                {
+                    thumbnailExtracted = true;
+                }
+
+                // If we have both Name and Thumbnail, we can SKIP Revit API completely!
+                if (!string.IsNullOrEmpty(proposedFamilyName) && thumbnailExtracted)
+                {
+                     return new FamilyProcessingResult
+                    {
+                        OriginalPath = filePath,
+                        FamilyName = proposedFamilyName,
+                        Category = category,
+                        Discipline = discipline,
+                        ThumbnailPath = tempThumbPath,
+                        Status = ProcessingStatus.Pending,
+                        Message = "AI Detection (Fast Mode)"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log warning but DO NOT STOP. Fallback to Revit.
+                System.Diagnostics.Debug.WriteLine($"[WARNING] Fast Mode Failed for {filePath}: {ex.Message}");
+            }
+
+            // --- PHASE 2: REVIT FALLBACK (SLOW PATH) ---
+
+            // Nếu thiếu thông tin, mới gọi Revit
             var revitTask = _revitHandler.Raise(RevitRequestType.ExtractMetadata, filePath);
             _externalEvent.Raise();
             
             try 
             {
-                // Timeout 30s cho mỗi file
                 if (await Task.WhenAny(revitTask, Task.Delay(30000)) != revitTask)
                 {
                     return new FamilyProcessingResult
@@ -45,7 +97,7 @@ namespace NTC.FamilyManager.Services.Family
                     };
                 }
 
-                await revitTask; // Đảm bảo bắt được exception nếu có
+                await revitTask; 
             }
             catch (Exception ex)
             {
@@ -59,54 +111,84 @@ namespace NTC.FamilyManager.Services.Family
                 };
             }
 
-            string category = _revitHandler.ExtractedCategory;
-            string discipline = MapCategoryToDiscipline(category);
-            string cleanName = Path.GetFileNameWithoutExtension(filePath);
-            
-            // Xóa tiền tố cũ nếu có
-            cleanName = Regex.Replace(cleanName, @"^NTC_[^_]+_[^_]+_", "");
+            if (string.IsNullOrEmpty(category))
+            {
+                category = _revitHandler.ExtractedCategory ?? "Generic Models";
+                discipline = MapCategoryToDiscipline(category);
+            }
 
-            string proposedName = $"NTC_{discipline}_{category}_{cleanName}";
+            if (!thumbnailExtracted)
+            {
+                 tempThumbPath = _revitHandler.ExtractedThumbnailPath;
+            }
+
+            // Ensure discipline is never null
+            if (string.IsNullOrEmpty(discipline)) discipline = "GEN";
+
+            // Generate name if SmartName failed
+            if (string.IsNullOrEmpty(proposedFamilyName))
+            {
+                string cleanName = Path.GetFileNameWithoutExtension(filePath);
+                // Remove existing NTC prefix if any to avoid NTC_NTC_...
+                cleanName = Regex.Replace(cleanName, @"^NTC_[^_]+_[^_]+_", "", RegexOptions.IgnoreCase);
+                proposedFamilyName = $"NTC_{discipline}_{category.Replace(" ", "")}_{cleanName}";
+            }
 
             return new FamilyProcessingResult
             {
                 OriginalPath = filePath,
-                FamilyName = proposedName,
+                FamilyName = proposedFamilyName,
                 Category = category,
                 Discipline = discipline,
-                ThumbnailPath = _revitHandler.ExtractedThumbnailPath,
-                Status = ProcessingStatus.Pending
+                ThumbnailPath = tempThumbPath,
+                Status = ProcessingStatus.Pending,
+                Message = "Revit Analyzed (Fallback)"
             };
         }
 
-        public async Task<bool> CommitStandardizationAsync(FamilyProcessingResult proposal)
+        public async Task<bool> CommitStandardizationAsync(FamilyProcessingResult proposal, string destinationRoot = null)
         {
+            // ... (rest of method stays the same, checking for nulls)
+            if (proposal == null) return false;
+            
             // Retry logic (3 lần) để dập tắt lỗi file bị khóa
             for (int i = 0; i < 3; i++)
             {
                 try
                 {
-                    string targetDir = Path.Combine(
-                        Path.GetDirectoryName(proposal.OriginalPath), 
-                        "Standardized", 
-                        proposal.Discipline, 
-                        proposal.Category);
+                    string targetDir;
+                    string disc = proposal.Discipline ?? "GEN";
+                    string cat = proposal.Category ?? "GenericModels";
+
+                    if (string.IsNullOrEmpty(destinationRoot))
+                    {
+                        targetDir = Path.Combine(
+                            Path.GetDirectoryName(proposal.OriginalPath), 
+                            "Standardized", 
+                            disc, 
+                            cat);
+                    }
+                    else
+                    {
+                        targetDir = Path.Combine(destinationRoot, disc, cat);
+                    }
 
                     if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
 
-                    string targetPath = Path.Combine(targetDir, proposal.FamilyName + ".rfa");
+                    string familyName = proposal.FamilyName ?? Path.GetFileNameWithoutExtension(proposal.OriginalPath);
+                    string targetPath = Path.Combine(targetDir, familyName + ".rfa");
 
                     // 1. Di chuyển file RFA
                     if (File.Exists(targetPath)) File.Delete(targetPath);
                     File.Move(proposal.OriginalPath, targetPath);
 
                     // 2. Đồng bộ Thumbnail
-                    string oldThumb = Path.Combine(Path.GetDirectoryName(proposal.OriginalPath), Path.GetFileNameWithoutExtension(proposal.OriginalPath) + "_3D.png");
-                    if (File.Exists(oldThumb))
+                    string oldThumb = proposal.ThumbnailPath; 
+                    if (!string.IsNullOrEmpty(oldThumb) && File.Exists(oldThumb))
                     {
-                        string newThumb = Path.Combine(targetDir, proposal.FamilyName + ".png");
+                        string newThumb = Path.Combine(targetDir, familyName + ".png");
                         if (File.Exists(newThumb)) File.Delete(newThumb);
-                        File.Move(oldThumb, newThumb);
+                        File.Copy(oldThumb, newThumb); 
                     }
 
                     proposal.NewPath = targetPath;
@@ -114,9 +196,8 @@ namespace NTC.FamilyManager.Services.Family
                     proposal.Message = "Thành công";
                     return true;
                 }
-                catch (IOException ex) when (i < 2)
+                catch (IOException) when (i < 2)
                 {
-                    // Đợi 1 giây rồi thử lại nếu file bị khóa
                     await Task.Delay(1000);
                 }
                 catch (Exception ex)
@@ -131,21 +212,24 @@ namespace NTC.FamilyManager.Services.Family
 
         public Task<bool> CheckDuplicatesAsync(FamilyProcessingResult proposal)
         {
-            // Logic kiểm tra trùng lặp trong thư mục Standardized
             return Task.FromResult(false); 
         }
 
         private string MapCategoryToDiscipline(string category)
         {
-            var arcCategories = new[] { "Doors", "Windows", "Walls", "Floors", "Roofs", "Stairs" };
-            var mepCategories = new[] { "Pipes", "Ducts", "Electrical Fixtures", "Mechanical Equipment" };
-            var strCategories = new[] { "Structural Columns", "Structural Foundations", "Structural Framing" };
+            if (string.IsNullOrEmpty(category)) return "GEN";
 
-            if (arcCategories.Any(c => category.Contains(c))) return "ARC";
-            if (mepCategories.Any(c => category.Contains(c))) return "MEP";
-            if (strCategories.Any(c => category.Contains(c))) return "STR";
+            var arcCategories = new[] { "Doors", "Windows", "Walls", "Floors", "Roofs", "Stairs", "Furniture", "Casework", "Curtain" };
+            var mepCategories = new[] { "Pipes", "Ducts", "Electrical", "Mechanical", "Plumbing", "Lighting", "Fire", "Sprinkler" };
+            var strCategories = new[] { "Structural", "Foundation", "Framing", "Rebar", "Connection" };
 
-            return "GEN"; // General / Generic
+            string catLower = category.ToLower();
+
+            if (arcCategories.Any(c => catLower.Contains(c.ToLower()))) return "ARC";
+            if (mepCategories.Any(c => catLower.Contains(c.ToLower()))) return "MEP";
+            if (strCategories.Any(c => catLower.Contains(c.ToLower()))) return "STR";
+
+            return "GEN"; 
         }
     }
 }

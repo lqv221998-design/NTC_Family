@@ -23,17 +23,20 @@ namespace NTC.FamilyManager.ViewModels
         private bool _isProcessing;
         private string _statusMessage;
         private double _progressValue;
+        private readonly Dispatcher _uiDispatcher;
 
         public FamilyCuratorViewModel(IFamilyCuratorService curatorService, RevitRequestHandler revitHandler)
         {
             _curatorService = curatorService;
             _revitHandler = revitHandler;
+            _uiDispatcher = Dispatcher.CurrentDispatcher;
+            
             Proposals = new ObservableCollection<FamilyProcessingResult>();
 
             SelectFilesCommand = new RelayCommand(_ => SelectFiles());
             SelectFolderCommand = new RelayCommand(_ => SelectFolder());
             CommitAllCommand = new RelayCommand(async _ => await CommitAllAsync());
-            CommitSelectedCommand = new RelayCommand(async p => await CommitItemAsync(p as FamilyProcessingResult));
+            CommitSelectedCommand = new RelayCommand(async p => await CommitSelectedAsync(p as FamilyProcessingResult));
             RemoveItemCommand = new RelayCommand(p => Proposals.Remove(p as FamilyProcessingResult));
         }
 
@@ -69,9 +72,12 @@ namespace NTC.FamilyManager.ViewModels
 
         private void SelectFiles()
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog();
-            dialog.Filter = "Revit Family (*.rfa)|*.rfa";
-            dialog.Multiselect = true;
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Multiselect = true,
+                Filter = "Revit Family (*.rfa)|*.rfa"
+            };
+
             if (dialog.ShowDialog() == true)
             {
                 _ = ProcessFilesAsync(dialog.FileNames);
@@ -80,11 +86,20 @@ namespace NTC.FamilyManager.ViewModels
 
         private void SelectFolder()
         {
-            using (var dialog = new FolderBrowserDialog())
+            var dialog = new Microsoft.Win32.OpenFileDialog
             {
-                if (dialog.ShowDialog() == DialogResult.OK)
+                ValidateNames = false,
+                CheckFileExists = false,
+                CheckPathExists = true,
+                FileName = "Chọn thư mục"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                string folderPath = Path.GetDirectoryName(dialog.FileName);
+                if (Directory.Exists(folderPath))
                 {
-                    var files = Directory.GetFiles(dialog.SelectedPath, "*.rfa", SearchOption.TopDirectoryOnly);
+                    var files = Directory.GetFiles(folderPath, "*.rfa", SearchOption.AllDirectories);
                     _ = ProcessFilesAsync(files);
                 }
             }
@@ -95,27 +110,35 @@ namespace NTC.FamilyManager.ViewModels
             if (files == null || files.Length == 0) return;
 
             IsProcessing = true;
+            ProgressValue = 0;
+            int total = files.Length;
+
             try
             {
-                int total = files.Length;
-                ProgressValue = 0;
-
                 for (int i = 0; i < total; i++)
                 {
                     string file = files[i];
                     string fileName = Path.GetFileName(file);
                     StatusMessage = $"Đang phân tích ({i + 1}/{total}): {fileName}...";
                     
-                    var proposal = await _curatorService.AnalyzeFamilyAsync(file);
-                    if (proposal != null)
+                    try 
                     {
-                        System.Windows.Application.Current.Dispatcher.Invoke(() => Proposals.Add(proposal));
+                        var proposal = await _curatorService.AnalyzeFamilyAsync(file);
+                        if (proposal != null)
+                        {
+                            _uiDispatcher.Invoke(() => Proposals.Add(proposal));
+                        }
                     }
-                    
-                    ProgressValue = (double)(i + 1) / total * 100;
+                    catch (Exception ex)
+                    {
+                        StatusMessage = $"Lỗi tại file {fileName}: {ex.Message}";
+                        System.Diagnostics.Debug.WriteLine($"Failed to process {file}: {ex.Message}");
+                        await Task.Delay(1000); 
+                    }
+
+                    ProgressValue = ((double)(i + 1) / total) * 100;
                 }
-                StatusMessage = $"Đã hoàn thành đề xuất {files.Length} file.";
-                ProgressValue = 100;
+                StatusMessage = $"Hoàn tất phân tích {total} file.";
             }
             finally
             {
@@ -123,36 +146,60 @@ namespace NTC.FamilyManager.ViewModels
             }
         }
 
-        private async Task CommitItemAsync(FamilyProcessingResult proposal)
+        private async Task CommitSelectedAsync(FamilyProcessingResult proposal)
         {
             if (proposal == null) return;
             
             bool success = await _curatorService.CommitStandardizationAsync(proposal);
             if (success)
             {
+                _uiDispatcher.Invoke(() => Proposals.Remove(proposal));
                 StatusMessage = $"Đã chuẩn hóa: {proposal.FamilyName}";
             }
         }
 
         private async Task CommitAllAsync()
         {
-            IsProcessing = true;
-            int count = 0;
-            try
+            if (Proposals == null || Proposals.Count == 0)
             {
-                foreach (var proposal in Proposals.ToList())
+                StatusMessage = "Không có gì để chuẩn hóa!";
+                return;
+            }
+
+            using (var dialog = new FolderBrowserDialog())
+            {
+                dialog.Description = "Chọn thư mục đích cho Thư viện Family (Phân loại theo Discipline/Category)";
+
+                if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    if (await _curatorService.CommitStandardizationAsync(proposal))
+                    string selectedPath = dialog.SelectedPath;
+                    IsProcessing = true;
+                    int count = 0;
+
+                    try
                     {
-                        Proposals.Remove(proposal);
-                        count++;
+                        var itemsToCommit = Proposals.ToList();
+                        foreach (var proposal in itemsToCommit)
+                        {
+                            StatusMessage = $"Đang lưu: {proposal.FamilyName}...";
+                            
+                            if (await _curatorService.CommitStandardizationAsync(proposal, selectedPath))
+                            {
+                                _uiDispatcher.Invoke(() => Proposals.Remove(proposal));
+                                count++;
+                            }
+                        }
+                        StatusMessage = $"Đã chuẩn hóa thành công {count} file vào: {selectedPath}";
+                    }
+                    catch (Exception ex)
+                    {
+                        StatusMessage = $"Lỗi khi lưu: {ex.Message}";
+                    }
+                    finally
+                    {
+                        IsProcessing = false;
                     }
                 }
-                StatusMessage = $"Đã hoàn thành chuẩn hóa {count} file.";
-            }
-            finally
-            {
-                IsProcessing = false;
             }
         }
     }

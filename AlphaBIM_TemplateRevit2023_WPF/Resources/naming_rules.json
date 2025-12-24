@@ -1,0 +1,270 @@
+{
+  "default_author": "BimTeam",
+  "version_prefix": "2023",
+  "rules": [
+    {
+      "keywords": [
+        "scaffold",
+        "gian giao",
+        "giao ntc",
+        "frame",
+        "he giao",
+        "bao che"
+      ],
+      "category": "Scaffold",
+      "description": "He_Gian_Giao",
+      "discipline": "STR",
+      "priority": 10
+    },
+    {
+      "keywords": [
+        "coc",
+        "pile",
+        "coc khoan nhoi",
+        "concrete pile",
+        "bore pile"
+      ],
+      "category": "StrFoundations",
+      "description": "Coc_Be_Tong",
+      "discipline": "STR",
+      "priority": 10
+    },
+    {
+      "keywords": [
+        "dai coc",
+        "pile cap",
+        "mong",
+        "foundation",
+        "mong don",
+        "mong bang"
+      ],
+      "category": "StrFoundations",
+      "description": "Mong_Be_Tong",
+      "discipline": "STR",
+      "priority": 9
+    },
+    {
+      "keywords": [
+        "column",
+        "cot",
+        "concrete rectangular",
+        "cot vuong",
+        "cot tron"
+      ],
+      "category": "Cols",
+      "description": "Cot_Be_Tong",
+      "discipline": "STR",
+      "priority": 8
+    },
+    {
+      "keywords": ["beam", "dam", "concrete beam", "dam chinh", "dam phu"],
+      "category": "Framing",
+      "description": "Dam_Be_Tong",
+      "discipline": "STR",
+      "priority": 8
+    },
+    {
+      "keywords": ["floor", "san", "concrete floor", "san be tong"],
+      "category": "Floors",
+      "description": "San_Be_Tong",
+      "discipline": "STR",
+      "priority": 7
+    },
+    {
+      "keywords": ["vach", "wall", "concrete wall", "tuong bao"],
+      "category": "Walls",
+      "description": "Vach_Be_Tong",
+      "discipline": "STR",
+      "priority": 7
+    },
+    {
+      "keywords": [
+        "window",
+        "cua so",
+        "cua chop",
+        "louver",
+        "fix window",
+        "glass",
+        "kinh"
+      ],
+      "category": "Windows",
+      "description": "Cua_So",
+      "discipline": "ARC",
+      "priority": 6
+    },
+    {
+      "keywords": [
+        "door",
+        "cua di",
+        "single",
+        "double",
+        "wood",
+        "go",
+        "rolling door",
+        "cua cuon",
+        "glass door"
+      ],
+      "category": "Doors",
+      "description": "Cua_Di",
+      "discipline": "ARC",
+      "priority": 6
+    },
+    {
+      "keywords": [
+        "furniture",
+        "ban",
+        "ghe",
+        "table",
+        "chair",
+        "sofa",
+        "bed",
+        "tu",
+        "cabinet",
+        "decor"
+      ],
+      "category": "Furniture",
+      "description": "Noi_That",
+      "discipline": "ARC",
+      "priority": 5
+    },
+    {
+      "keywords": [
+        "casework",
+        "ke",
+        "tu bep",
+        "kitchen cabinet",
+        "worktop",
+        "sink"
+      ],
+      "category": "Casework",
+      "description": "Tu_Ke",
+      "discipline": "ARC",
+      "priority": 5
+    },
+    {
+      "keywords": ["railing", "lan can", "tay vin", "handrail", "baluster"],
+      "category": "Railings",
+      "description": "Lan_Can",
+      "discipline": "ARC",
+      "priority": 5
+    },
+    {
+      "keywords": [
+        "ahu",
+        "air handling unit",
+        "xu ly khong khi",
+        "chiller",
+        "cooling tower"
+      ],
+      "category": "MechEquip",
+      "description": "Thiet_Bi_Co_Khi",
+      "discipline": "MEP",
+      "priority": 10
+    },
+    {
+      "keywords": ["pump", "may bom", "booster pump", "fire pump"],
+      "category": "PlumbingFixtures",
+      "description": "May_Bom",
+      "discipline": "MEP",
+      "priority": 10
+    },
+    {
+      "keywords": [
+        "duct",
+        "ong gio",
+        "rectangular duct",
+        "round duct",
+        "diffuser",
+        "mieng gio"
+      ],
+      "category": "DuctCurves",
+      "description": "He_Thong_Ong_Gio",
+      "discipline": "MEP",
+      "priority": 8
+    },
+    {
+      "keywords": ["pipe", "ong nuoc", "ppr", "pvc", "upvc", "steel pipe"],
+      "category": "PipeCurves",
+      "description": "He_Thong_Ong_Nuoc",
+      "discipline": "MEP",
+      "priority": 8
+    },
+    {
+      "keywords": [
+        "elbow",
+        "co",
+        "cut",
+        "tee",
+        "te",
+        "goc",
+        "bend",
+        "fitting",
+        "reducer",
+        "con"
+      ],
+      "category": "PipeFittings",
+      "description": "Phu_Kien_Ong",
+      "discipline": "MEP",
+      "priority": 7
+    },
+    {
+      "keywords": [
+        "valve",
+        "van",
+        "gate valve",
+        "ball valve",
+        "van cong",
+        "van bi",
+        "check valve"
+      ],
+      "category": "PipeAccessories",
+      "description": "Van_Thiet_Bi",
+      "discipline": "MEP",
+      "priority": 7
+    },
+    {
+      "keywords": [
+        "lighting",
+        "fixture",
+        "den",
+        "led",
+        "spotlight",
+        "panel",
+        "downlight"
+      ],
+      "category": "LightingFixtures",
+      "description": "Den_Chieu_Sang",
+      "discipline": "MEP",
+      "priority": 6
+    },
+    {
+      "keywords": [
+        "security",
+        "camera",
+        "cctv",
+        "bao chay",
+        "smoke detector",
+        "sensor",
+        "cam bien"
+      ],
+      "category": "SecurityDevices",
+      "description": "Thiet_Bi_An_Ninh",
+      "discipline": "MEP",
+      "priority": 6
+    },
+    {
+      "keywords": ["tag", "nhan", "annotation", "ky hieu", "symbol"],
+      "category": "GenericAnnotations",
+      "description": "Ky_Hieu_Ghi_Chu",
+      "discipline": "GEN",
+      "priority": 4
+    },
+    {
+      "keywords": ["title block", "khung ten", "sheet"],
+      "category": "TitleBlocks",
+      "description": "Khung_Ten_Ban_Ve",
+      "discipline": "GEN",
+      "priority": 4
+    }
+  ]
+}

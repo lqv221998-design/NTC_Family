@@ -15,7 +15,7 @@ namespace NTC.FamilyManager.Core.Interfaces
         /// <summary>
         /// Thực thi việc chuẩn hóa (Rename/Move) sau khi Admin phê duyệt.
         /// </summary>
-        Task<bool> CommitStandardizationAsync(FamilyProcessingResult proposal);
+        Task<bool> CommitStandardizationAsync(FamilyProcessingResult proposal, string destinationRoot = null);
 
         /// <summary>
         /// Kiểm tra xem tên hoặc metadata đã tồn tại trong thư viện chưa.
