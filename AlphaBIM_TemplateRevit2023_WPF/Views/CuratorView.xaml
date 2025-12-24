@@ -61,6 +61,10 @@
                   ItemsSource="{Binding Proposals}"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
+                  EnableRowVirtualization="True"
+                  EnableColumnVirtualization="False"
+                  VirtualizingPanel.IsVirtualizing="True"
+                  VirtualizingPanel.VirtualizationMode="Recycling"
                   Margin="10"
                   Style="{DynamicResource MaterialDesignDataGrid}">
             <DataGrid.Resources>
