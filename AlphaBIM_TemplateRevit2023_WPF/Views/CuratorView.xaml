@@ -24,6 +24,7 @@
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <converters:FileNameConverter x:Key="FileNameConverter" />
+            <converters:ThumbnailToImageConverter x:Key="ThumbnailToImageConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
     <Grid Background="White">
@@ -70,31 +71,33 @@
                 <DataGridTemplateColumn Header="Thumbnail"
                                         Width="100">
                     <DataGridTemplateColumn.CellTemplate>
-                        <Grid Height="64"
-                              Width="64">
-                            <!-- Placeholder Icon -->
-                            <materialDesign:PackIcon Kind="FamilyTree"
-                                                     Opacity="0.3"
-                                                     Width="40"
-                                                     Height="40"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center" />
-                            <!-- Actual Thumbnail -->
-                            <Image Source="{Binding ThumbnailPath}"
-                                   Stretch="Uniform">
-                                <Image.Style>
-                                    <Style TargetType="Image">
-                                        <Style.Triggers>
-                                            <Trigger Property="Source"
-                                                     Value="{x:Null}">
-                                                <Setter Property="Visibility"
-                                                        Value="Collapsed" />
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Image.Style>
-                            </Image>
-                        </Grid>
+                        <DataTemplate>
+                            <Grid Height="64"
+                                  Width="64">
+                                <!-- Placeholder Icon -->
+                                <materialDesign:PackIcon Kind="FamilyTree"
+                                                         Opacity="0.3"
+                                                         Width="40"
+                                                         Height="40"
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center" />
+                                <!-- Actual Thumbnail -->
+                                <Image Source="{Binding ThumbnailPath, Converter={StaticResource ThumbnailToImageConverter}}"
+                                       Stretch="Uniform">
+                                    <Image.Style>
+                                        <Style TargetType="Image">
+                                            <Style.Triggers>
+                                                <Trigger Property="Source"
+                                                         Value="{x:Null}">
+                                                    <Setter Property="Visibility"
+                                                            Value="Collapsed" />
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Image.Style>
+                                </Image>
+                            </Grid>
+                        </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Tên hiện tại"
@@ -115,10 +118,16 @@
                                     Binding="{Binding Category}"
                                     IsReadOnly="True"
                                     Width="100" />
-                <DataGridTextColumn Header="Discipline"
-                                    Binding="{Binding Discipline}"
-                                    IsReadOnly="True"
-                                    Width="80" />
+                <DataGridTemplateColumn Header="Hạng mục"
+                                        Width="120">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ComboBox ItemsSource="{Binding DataContext.Disciplines, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                      SelectedItem="{Binding Discipline, UpdateSourceTrigger=PropertyChanged}"
+                                      Style="{DynamicResource MaterialDesignFloatingHintComboBox}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTemplateColumn Header="Thao tác"
                                         Width="120">
                     <DataGridTemplateColumn.CellTemplate>

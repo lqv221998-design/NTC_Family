@@ -18,6 +18,7 @@ namespace NTC.FamilyManager.Services.Family
         private readonly RevitRequestHandler _revitHandler;
         private readonly ExternalEvent _externalEvent;
         private readonly SmartNameGenerator _smartNamer;
+        private readonly OleMetadataReader _oleReader;
         private readonly OleThumbnailExtractor _oleExtractor;
 
         public FamilyCuratorService(RevitRequestHandler revitHandler, ExternalEvent externalEvent)
@@ -26,6 +27,7 @@ namespace NTC.FamilyManager.Services.Family
             _externalEvent = externalEvent;
             _smartNamer = new SmartNameGenerator();
             _oleExtractor = new OleThumbnailExtractor();
+            _oleReader = new OleMetadataReader();
         }
 
         public async Task<FamilyProcessingResult> AnalyzeFamilyAsync(string filePath)
@@ -38,115 +40,65 @@ namespace NTC.FamilyManager.Services.Family
             string discipline = null;
             bool thumbnailExtracted = false;
 
-            // --- PHASE 1: INTELLIGENT SPEED (JSON & OLE) ---
             try 
             {
-                // 1.1 Try Smart Naming (JSON)
-                var namingResult = _smartNamer.SuggestName(filePath);
-                if (!string.IsNullOrEmpty(namingResult.ProposedName))
-                {
-                    proposedFamilyName = namingResult.ProposedName;
-                    category = namingResult.Category;
-                    discipline = namingResult.Discipline;
-                }
+                var oleData = _oleReader.ReadMetadata(filePath);
+                string revitVersion = oleData.Version ?? "2023";
+                
+                var namingResult = _smartNamer.SuggestName(filePath, oleData.Category, revitVersion);
+                proposedFamilyName = namingResult.ProposedName;
+                category = namingResult.Category ?? oleData.Category;
+                discipline = namingResult.Discipline ?? oleData.Discipline;
 
-                // 1.2 Try Fast Thumbnail (OLE)
                 if (_oleExtractor.TryExtractThumbnail(filePath, tempThumbPath))
                 {
                     thumbnailExtracted = true;
                 }
 
-                // If we have both Name and Thumbnail, we can SKIP Revit API completely!
-                if (!string.IsNullOrEmpty(proposedFamilyName) && thumbnailExtracted)
-                {
-                     return new FamilyProcessingResult
-                    {
-                        OriginalPath = filePath,
-                        FamilyName = proposedFamilyName,
-                        Category = category,
-                        Discipline = discipline,
-                        Version = "2023", // Default AI version
-                        ThumbnailPath = tempThumbPath,
-                        Status = ProcessingStatus.Pending,
-                        Message = "AI Detection (Fast Mode)"
-                    };
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log warning but DO NOT STOP. Fallback to Revit.
-                System.Diagnostics.Debug.WriteLine($"[WARNING] Fast Mode Failed for {filePath}: {ex.Message}");
-            }
-
-            // --- PHASE 2: REVIT FALLBACK (SLOW PATH) ---
-
-            // Nếu thiếu thông tin, mới gọi Revit
-            var revitTask = _revitHandler.Raise(RevitRequestType.ExtractMetadata, filePath);
-            _externalEvent.Raise();
-            
-            try 
-            {
-                if (await Task.WhenAny(revitTask, Task.Delay(30000)) != revitTask)
-                {
-                    return new FamilyProcessingResult
-                    {
-                        OriginalPath = filePath,
-                        FamilyName = Path.GetFileNameWithoutExtension(filePath),
-                        Category = "Timeout",
-                        Status = ProcessingStatus.Failed,
-                        Message = "Revit không phản hồi sau 30 giây."
-                    };
-                }
-
-                await revitTask; 
-            }
-            catch (Exception ex)
-            {
                 return new FamilyProcessingResult
                 {
                     OriginalPath = filePath,
-                    FamilyName = Path.GetFileNameWithoutExtension(filePath),
-                    Category = "Error",
-                    Status = ProcessingStatus.Failed,
-                    Message = $"Lỗi Revit: {ex.Message}"
+                    FamilyName = proposedFamilyName,
+                    Category = category ?? "Generic Models",
+                    Discipline = discipline ?? "Kiến trúc",
+                    Version = revitVersion,
+                    ThumbnailPath = thumbnailExtracted ? tempThumbPath : null,
+                    Status = ProcessingStatus.Pending,
+                    Message = "NTC Deep Scan (OLE Mode)"
                 };
             }
-
-            if (string.IsNullOrEmpty(category))
+            catch (Exception ex)
             {
-                category = _revitHandler.ExtractedCategory ?? "Generic Models";
-                discipline = MapCategoryToDiscipline(category);
+                System.Diagnostics.Debug.WriteLine($"[WARNING] OLE Failed: {ex.Message}");
             }
 
+            var revitTask = _revitHandler.Raise(RevitRequestType.ExtractMetadata, filePath);
+            _externalEvent.Raise();
+            await revitTask; 
+            
+            category = _revitHandler.ExtractedCategory ?? "Generic Models";
             string version = _revitHandler.ExtractedVersion ?? "2023";
+            discipline = MapCategoryToDiscipline(category);
 
             if (!thumbnailExtracted)
             {
                  tempThumbPath = _revitHandler.ExtractedThumbnailPath;
             }
 
-            // Ensure discipline is never null
-            if (string.IsNullOrEmpty(discipline)) discipline = "GEN";
-
-            // Generate name if SmartName failed
-            if (string.IsNullOrEmpty(proposedFamilyName))
-            {
-                string cleanName = Path.GetFileNameWithoutExtension(filePath);
-                // Remove existing NTC prefix if any to avoid NTC_NTC_...
-                cleanName = Regex.Replace(cleanName, @"^NTC_[^_]+_[^_]+_", "", RegexOptions.IgnoreCase);
-                proposedFamilyName = $"NTC_{discipline}_{category.Replace(" ", "")}_{cleanName}";
-            }
+            string cleanName = Path.GetFileNameWithoutExtension(filePath).Replace(" ", "_").Replace("-", "_").ToLower();
+            string catShort = category.Replace(" ", "").ToLower();
+            proposedFamilyName = $"NTC_{catShort}_{cleanName}_v{version}";
 
             return new FamilyProcessingResult
             {
                 OriginalPath = filePath,
                 FamilyName = proposedFamilyName,
                 Category = category,
-                Discipline = discipline,
+                Discipline = discipline ?? "Kiến trúc",
                 Version = version,
                 ThumbnailPath = tempThumbPath,
                 Status = ProcessingStatus.Pending,
-                Message = (category == "Timeout") ? "Revit Busy (Timeout)" : "Analyzed"
+                Message = "Analyzed (Revit Fallback)"
             };
         }
 
@@ -154,65 +106,49 @@ namespace NTC.FamilyManager.Services.Family
         {
             if (proposal == null) return false;
             
-            // Retry logic (3 lần) để xử lý file bị khóa (Lock)
             for (int i = 0; i < 3; i++)
             {
                 try
                 {
-                    string targetDir;
-                    string disc = proposal.Discipline ?? "GEN";
-                    string cat = proposal.Category ?? "GenericModels";
                     string ver = proposal.Version ?? "2023";
+                    string disc = (proposal.Discipline ?? "Kiến trúc").ToLower().Replace(" ", "_");
+                    string cat = (proposal.Category ?? "Generic Models").ToLower().Replace(" ", "_");
+                    string familyName = proposal.FamilyName;
+                    string targetDir;
 
-                    // Library 2.0 Structure: [Root]\[Year]\[Discipline]\[Category]
                     if (string.IsNullOrEmpty(destinationRoot))
-                    {
-                        targetDir = Path.Combine(
-                            Path.GetDirectoryName(proposal.OriginalPath), 
-                            "Standardized_Library", 
-                            ver,
-                            disc, 
-                            cat);
-                    }
+                        targetDir = Path.Combine(Path.GetDirectoryName(proposal.OriginalPath), "Standardized_Library", ver, disc, cat);
                     else
-                    {
                         targetDir = Path.Combine(destinationRoot, ver, disc, cat);
-                    }
 
-                    // JIT Folder Creation
                     if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
 
-                    string familyName = proposal.FamilyName ?? Path.GetFileNameWithoutExtension(proposal.OriginalPath);
                     string targetPath = Path.Combine(targetDir, familyName + ".rfa");
-
-                    // --- SHADOW COPY SAFETY LOGIC ---
-                    // Tránh Move trực tiếp vì nếu lỗi giữa chừng sẽ mất file gốc
-                    // 1. Copy sang đích
                     File.Copy(proposal.OriginalPath, targetPath, true);
                     
-                    // 2. Kiểm tra tính toàn vẹn (Size > 0)
                     if (new FileInfo(targetPath).Length > 0)
                     {
-                        // 3. Xóa file gốc nếu copy thành công
-                        try { File.Delete(proposal.OriginalPath); } catch { /* Ignore delete failure */ }
+                        try { File.Delete(proposal.OriginalPath); } catch { }
                     }
 
-                    // 4. Đồng bộ Thumbnail
-                    string oldThumb = proposal.ThumbnailPath; 
-                    if (!string.IsNullOrEmpty(oldThumb) && File.Exists(oldThumb))
+                    if (!string.IsNullOrEmpty(proposal.ThumbnailPath) && File.Exists(proposal.ThumbnailPath))
                     {
-                        string newThumb = Path.Combine(targetDir, familyName + ".png");
-                        File.Copy(oldThumb, newThumb, true); 
+                        try 
+                        {
+                            string newThumb = Path.Combine(targetDir, familyName + ".png");
+                            File.Copy(proposal.ThumbnailPath, newThumb, true); 
+                        }
+                        catch { }
                     }
 
                     proposal.NewPath = targetPath;
                     proposal.Status = ProcessingStatus.Succeeded;
-                    proposal.Message = "Đã lưu vào thư viện v" + ver;
+                    proposal.Message = $"Đã lưu chuẩn V4.2 vào thư mục {disc}/{cat}";
                     return true;
                 }
                 catch (IOException) when (i < 2)
                 {
-                    await Task.Delay(1500); // Đợi Revit nhả file
+                    await Task.Delay(1500);
                 }
                 catch (Exception ex)
                 {
@@ -231,19 +167,15 @@ namespace NTC.FamilyManager.Services.Family
 
         private string MapCategoryToDiscipline(string category)
         {
-            if (string.IsNullOrEmpty(category)) return "GEN";
-
+            if (string.IsNullOrEmpty(category)) return "Kiến trúc";
             var arcCategories = new[] { "Doors", "Windows", "Walls", "Floors", "Roofs", "Stairs", "Furniture", "Casework", "Curtain" };
             var mepCategories = new[] { "Pipes", "Ducts", "Electrical", "Mechanical", "Plumbing", "Lighting", "Fire", "Sprinkler" };
             var strCategories = new[] { "Structural", "Foundation", "Framing", "Rebar", "Connection" };
-
             string catLower = category.ToLower();
-
-            if (arcCategories.Any(c => catLower.Contains(c.ToLower()))) return "ARC";
+            if (arcCategories.Any(c => catLower.Contains(c.ToLower()))) return "Kiến trúc";
             if (mepCategories.Any(c => catLower.Contains(c.ToLower()))) return "MEP";
-            if (strCategories.Any(c => catLower.Contains(c.ToLower()))) return "STR";
-
-            return "GEN"; 
+            if (strCategories.Any(c => catLower.Contains(c.ToLower()))) return "Kết cấu";
+            return "Kiến trúc"; 
         }
     }
 }

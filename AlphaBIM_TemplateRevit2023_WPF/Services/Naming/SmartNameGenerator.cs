@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Newtonsoft.Json;
 using NTC.FamilyManager.Core.Models.Naming;
@@ -101,34 +102,66 @@ namespace NTC.FamilyManager.Services.Naming
             }
         }
 
-        public (string ProposedName, string Category, string Discipline, string Description) SuggestName(string originalPath)
+        public (string ProposedName, string Category, string Discipline, string Description) SuggestName(string originalPath, string category = null, string version = null)
         {
             lock (_lock)
             {
-                if (_rules == null || !_rules.Any()) return (null, null, null, null);
-
                 string fileName = Path.GetFileNameWithoutExtension(originalPath);
-                string normalizedName = NormalizeString(fileName);
-
-                // Tìm rule khớp nhất
-                // Ưu tiên 1: Priority cao nhất
-                // Ưu tiên 2: Khớp nhiều từ khóa nhất (hoặc từ khóa dài nhất)
-                var matchedRule = _rules
-                    .Where(r => r.Keywords.Any(k => normalizedName.Contains(NormalizeString(k))))
-                    .OrderByDescending(r => r.Priority)
-                    .ThenByDescending(r => r.Keywords.Max(k => k.Length))
-                    .FirstOrDefault();
-
-                if (matchedRule != null)
+                string normalizedOriginalName = fileName.Replace(" ", "_").Replace("-", "_").ToLower();
+                
+                // 1. Tìm rule khớp nhất để lấy Discipline/Description nếu cần (vẫn giữ logic thông minh)
+                NamingRule matchedRule = null;
+                if (_rules != null && _rules.Any())
                 {
-                    // Format chuẩn: NTC_<Bộ môn>_<Hạng mục>_<Mô tả>
-                    string newName = $"NTC_{matchedRule.Discipline}_{matchedRule.Category.Replace(" ", "")}_{matchedRule.Description.Replace(" ", "")}";
-
-                    return (newName, matchedRule.Category, matchedRule.Discipline, matchedRule.Description);
+                    string searchName = NormalizeString(fileName);
+                    matchedRule = _rules
+                        .Where(r => r.Keywords.Any(k => searchName.Contains(NormalizeString(k))))
+                        .OrderByDescending(r => r.Priority)
+                        .ThenByDescending(r => r.Keywords.Max(k => k.Length))
+                        .FirstOrDefault();
                 }
 
-                return (null, null, null, null);
+                // 2. Metadata Context
+                string finalCat = category ?? matchedRule?.Category ?? "Generic Models";
+                string finalDisc = matchedRule?.Discipline ?? "GEN";
+                string finalDesc = matchedRule?.Description ?? "Auto-generated";
+                string finalYear = version ?? _config?.VersionPrefix ?? "2023";
+
+                // 3. Format V4.2 Standard: NTC_[Families]_[originalNameLowercase]_v[year]
+                // Families = Category (tên rút gọn, bỏ dấu cách)
+                string sanitizedCat = SanitizeCategory(finalCat);
+                string catShort = sanitizedCat.Replace(" ", "").ToLower();
+                string proposedName = $"NTC_{catShort}_{normalizedOriginalName}_v{finalYear}";
+
+                return (proposedName, sanitizedCat, finalDisc, finalDesc);
             }
+        }
+
+        private string SanitizeCategory(string rawCategory)
+        {
+            if (string.IsNullOrEmpty(rawCategory)) return "Generic Models";
+
+            // 1. Loại bỏ mã OmniClass (vđ: 23.25.30.11.14...)
+            string sanitized = Regex.Replace(rawCategory, @"\d{2}(\.\d{2})+", "").Trim();
+
+            // 2. Loại bỏ gạch chân/mã hiệu lạ ở cuối nếu có dính "std:oc1"
+            sanitized = Regex.Replace(sanitized, @"std:oc\d+", "").Trim();
+
+            // 3. Loại bỏ Revit Internal Tags (adsk:revit:...)
+            sanitized = Regex.Replace(sanitized, @"adsk:revit:[a-zA-Z]+", "").Trim();
+
+            // 4. Nếu bị dính liền (vđ: "Generic Modelsadsk..."), lấy phần trước adsk
+            int internalIdx = sanitized.IndexOf("adsk:", StringComparison.OrdinalIgnoreCase);
+            if (internalIdx > 0)
+            {
+                sanitized = sanitized.Substring(0, internalIdx).Trim();
+            }
+
+            // 5. Nếu sau khi lọc mà rỗng hoặc quá ngắn, trả về mặc định
+            if (string.IsNullOrWhiteSpace(sanitized) || sanitized.Length < 2)
+                return "Generic Models";
+
+            return sanitized;
         }
 
         private string NormalizeString(string input)

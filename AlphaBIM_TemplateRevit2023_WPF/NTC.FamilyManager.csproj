@@ -114,6 +114,10 @@
                    Condition="'$(TargetFramework)' == 'net48'" />
         <Reference Include="Microsoft.CSharp"
                    Condition="'$(TargetFramework)' == 'net48'" />
+        <Reference Include="System.Xml"
+                   Condition="'$(TargetFramework)' == 'net48'" />
+        <Reference Include="System.Xml.Linq"
+                   Condition="'$(TargetFramework)' == 'net48'" />
     </ItemGroup>
     <ItemGroup>
         <None Update="Resources\naming_rules.json">

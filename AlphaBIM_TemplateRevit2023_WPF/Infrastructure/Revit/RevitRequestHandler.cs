@@ -117,29 +117,10 @@ namespace NTC.FamilyManager.Infrastructure.Revit
             {
                 try
                 {
-                    // Trích xuất Version bằng cách đọc header file (nhanh và chính xác hơn BasicFileInfo ở Revit cũ)
-                    using (FileStream fs = new FileStream(FamilyPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                    using (StreamReader reader = new StreamReader(fs, System.Text.Encoding.Unicode))
-                    {
-                        char[] buffer = new char[1024];
-                        reader.Read(buffer, 0, 1024);
-                        string header = new string(buffer);
-                        var match = System.Text.RegularExpressions.Regex.Match(header, @"Autodesk Revit 20\d{2}");
-                        if (match.Success)
-                        {
-                            ExtractedVersion = match.Value.Replace("Autodesk Revit ", "");
-                        }
-                    }
-
-                    // Nếu vẫn không tìm thấy bằng header Unicode, thử ASCII (Trường hợp hiếm)
-                    if (string.IsNullOrEmpty(ExtractedVersion))
-                    {
-                        string firstBytes = File.ReadAllText(FamilyPath).Substring(0, Math.Min(2000, (int)new FileInfo(FamilyPath).Length));
-                        var match = System.Text.RegularExpressions.Regex.Match(firstBytes, @"Autodesk Revit 20\d{2}");
-                        if (match.Success) ExtractedVersion = match.Value.Replace("Autodesk Revit ", "");
-                    }
+                    // Metadata extraction is now primarily handled by OleMetadataReader in FamilyCuratorService (V4.1)
+                    // This section in RevitRequestHandler remains as a minimal fallback if needed.
                 }
-                catch { /* Quietly fail version detection */ }
+                catch { /* Quietly fail fallback detection */ }
 
                 // 2. Cố gắng trích xuất Category bằng PartAtom nếu BasicFileInfo thiếu
                 if (string.IsNullOrEmpty(ExtractedCategory))
