@@ -12,30 +12,26 @@ namespace NTC.FamilyManager.Services.Thumbnails
             {
                 if (!File.Exists(rfaPath)) return false;
 
-                // Revit files are OLE Compound Files
-                using (CompoundFile cf = new CompoundFile(rfaPath))
+                // Sử dụng FileStream với FileShare.ReadWrite để vừa hỗ trợ Unicode vừa tránh Lock file
+                using (FileStream fs = new FileStream(rfaPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (CompoundFile cf = new CompoundFile(fs))
                 {
-                    // Revit stores preview in a stream named "RevitPreview4.0" or similar
-                    // We Iterate root storage to find any stream starting with RevitPreview
                     CFStream previewStream = null;
-                    
                     cf.RootStorage.VisitEntries(entry =>
                     {
                         if (entry.IsStream && entry.Name.StartsWith("RevitPreview"))
                         {
                             previewStream = entry as CFStream;
                         }
-                    }, false); // Non-recursive visit of root
+                    }, false);
 
                     if (previewStream != null)
                     {
                         var data = previewStream.GetData();
-                        if (data != null && data.Length > 0)
+                        if (data != null && data.Length > 8)
                         {
-                            // The stream is a PNG image (usually) - checks signature
-                            // PNG signature: 89 50 4E 47 0D 0A 1A 0A
-                            if (data.Length > 8 && 
-                                data[0] == 0x89 && data[1] == 0x50 && 
+                            // Kiểm tra chữ ký PNG: 89 50 4E 47
+                            if (data[0] == 0x89 && data[1] == 0x50 && 
                                 data[2] == 0x4E && data[3] == 0x47) 
                             { 
                                 File.WriteAllBytes(outputPath, data);
@@ -45,17 +41,10 @@ namespace NTC.FamilyManager.Services.Thumbnails
                     }
                 }
             }
-            catch (IOException ioEx)
-            {
-                // File locked by Revit or other process
-                System.Diagnostics.Debug.WriteLine($"[OLE LOCK] File invalid or locked: {ioEx.Message}");
-            }
             catch (Exception ex)
             {
-                // Format error
-                System.Diagnostics.Debug.WriteLine($"[OLE ERROR] Extraction failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[OLE ERROR] {Path.GetFileName(rfaPath)}: {ex.Message}");
             }
-            
             return false;
         }
     }

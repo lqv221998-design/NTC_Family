@@ -18,6 +18,7 @@ namespace NTC.FamilyManager.Core.Models
         public string FamilyName { get; set; }
         public string Category { get; set; }
         public string Discipline { get; set; }
+        public string Version { get; set; }
         public ProcessingStatus Status { get; set; }
         public string Message { get; set; }
         public string ThumbnailPath { get; set; }

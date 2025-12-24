@@ -19,6 +19,7 @@ namespace NTC.FamilyManager.Infrastructure.Revit
         public RevitRequestType RequestType { get; set; } = RevitRequestType.None;
         public string FamilyPath { get; set; }
         public string ExtractedCategory { get; private set; }
+        public string ExtractedVersion { get; private set; }
         public string ExtractedThumbnailPath { get; private set; }
         private volatile bool _isFinished = true;
         public bool IsFinished 
@@ -36,6 +37,12 @@ namespace NTC.FamilyManager.Infrastructure.Revit
             {
                 RequestType = type;
                 FamilyPath = path;
+                
+                // Reset kết quả cũ để tránh "lỗi ẩn" dữ liệu lặp lại
+                ExtractedCategory = null;
+                ExtractedVersion = null;
+                ExtractedThumbnailPath = null;
+                
                 _tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
                 IsFinished = false;
                 return _tcs.Task;
@@ -108,45 +115,80 @@ namespace NTC.FamilyManager.Infrastructure.Revit
             
             try
             {
-                // 1. Cố gắng trích xuất Category bằng PartAtom (siêu tốc, không mở file)
-                string tempXml = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".xml");
-                try 
+                try
                 {
-                    app.Application.ExtractPartAtomFromFamilyFile(FamilyPath, tempXml);
-                    if (File.Exists(tempXml))
+                    // Trích xuất Version bằng cách đọc header file (nhanh và chính xác hơn BasicFileInfo ở Revit cũ)
+                    using (FileStream fs = new FileStream(FamilyPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    using (StreamReader reader = new StreamReader(fs, System.Text.Encoding.Unicode))
                     {
-                        string xmlContent = File.ReadAllText(tempXml);
-                        var match = System.Text.RegularExpressions.Regex.Match(xmlContent, @"<category>(.*?)</category>");
+                        char[] buffer = new char[1024];
+                        reader.Read(buffer, 0, 1024);
+                        string header = new string(buffer);
+                        var match = System.Text.RegularExpressions.Regex.Match(header, @"Autodesk Revit 20\d{2}");
                         if (match.Success)
                         {
-                            ExtractedCategory = match.Groups[1].Value;
+                            ExtractedVersion = match.Value.Replace("Autodesk Revit ", "");
                         }
-                        File.Delete(tempXml);
+                    }
+
+                    // Nếu vẫn không tìm thấy bằng header Unicode, thử ASCII (Trường hợp hiếm)
+                    if (string.IsNullOrEmpty(ExtractedVersion))
+                    {
+                        string firstBytes = File.ReadAllText(FamilyPath).Substring(0, Math.Min(2000, (int)new FileInfo(FamilyPath).Length));
+                        var match = System.Text.RegularExpressions.Regex.Match(firstBytes, @"Autodesk Revit 20\d{2}");
+                        if (match.Success) ExtractedVersion = match.Value.Replace("Autodesk Revit ", "");
                     }
                 }
-                catch { /* Fallback to opening file if PartAtom fails */ }
+                catch { /* Quietly fail version detection */ }
 
-                // 2. Mở file để lấy Thumbnail (chỉ khi thực sự cần thiết)
-                // Dùng OpenOptions để chặn các cảnh báo
-                OpenOptions opt = new OpenOptions();
-                ModelPath mPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(FamilyPath);
-                
-                Document familyDoc = app.Application.OpenDocumentFile(mPath, opt);
-                if (familyDoc != null)
+                // 2. Cố gắng trích xuất Category bằng PartAtom nếu BasicFileInfo thiếu
+                if (string.IsNullOrEmpty(ExtractedCategory))
                 {
-                    try
+                    string tempXml = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".xml");
+                    try 
                     {
-                        if (familyDoc.IsFamilyDocument)
+                        app.Application.ExtractPartAtomFromFamilyFile(FamilyPath, tempXml);
+                        if (File.Exists(tempXml))
                         {
-                            if (string.IsNullOrEmpty(ExtractedCategory))
-                                ExtractedCategory = familyDoc.OwnerFamily?.FamilyCategory?.Name ?? "General";
-                        
-                            Export3DThumbnail(familyDoc);
+                            string xmlContent = File.ReadAllText(tempXml);
+                            var matchRegex = System.Text.RegularExpressions.Regex.Match(xmlContent, @"<category>(.*?)</category>");
+                            if (matchRegex.Success)
+                            {
+                                ExtractedCategory = matchRegex.Groups[1].Value;
+                            }
+                            File.Delete(tempXml);
                         }
                     }
-                    finally
+                    catch { }
+                }
+
+                // 3. Chỉ mở file để lấy Thumbnail nếu chưa có kết quả OLE hoặc metadata vẫn thiếu
+                // Lưu ý: Mở file tốn rất nhiều thời gian, ưu tiên tránh bước này.
+                if (string.IsNullOrEmpty(ExtractedCategory) || string.IsNullOrEmpty(ExtractedThumbnailPath))
+                {
+                    OpenOptions opt = new OpenOptions();
+                    ModelPath mPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(FamilyPath);
+                    
+                    Document familyDoc = app.Application.OpenDocumentFile(mPath, opt);
+                    if (familyDoc != null)
                     {
-                        familyDoc.Close(false);
+                        try
+                        {
+                            if (familyDoc.IsFamilyDocument)
+                            {
+                                if (string.IsNullOrEmpty(ExtractedCategory))
+                                    ExtractedCategory = familyDoc.OwnerFamily?.FamilyCategory?.Name ?? "General";
+                            
+                                if (string.IsNullOrEmpty(ExtractedVersion))
+                                    ExtractedVersion = familyDoc.Application.VersionNumber;
+
+                                Export3DThumbnail(familyDoc);
+                            }
+                        }
+                        finally
+                        {
+                            familyDoc.Close(false);
+                        }
                     }
                 }
             }

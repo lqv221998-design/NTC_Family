@@ -3,264 +3,154 @@
   "version_prefix": "2023",
   "rules": [
     {
-      "keywords": [
-        "scaffold",
-        "gian giao",
-        "giao ntc",
-        "frame",
-        "he giao",
-        "bao che"
-      ],
+      "keywords": [ "van khuon", "cop pha", "formwork", "cop pha mong", "cop pha cot", "cop pha dam", "cop pha san", "cop pha vach" ],
+      "category": "Foundations",
+      "description": "Van_Khuon_Phan_Tho",
+      "discipline": "STR",
+      "priority": 12
+    },
+    {
+      "keywords": [ "scaffold", "gian giao", "giao ntc", "frame", "he giao", "bao che", "giao n", "giao h", "ringlock" ],
       "category": "Scaffold",
       "description": "He_Gian_Giao",
       "discipline": "STR",
       "priority": 10
     },
     {
-      "keywords": [
-        "coc",
-        "pile",
-        "coc khoan nhoi",
-        "concrete pile",
-        "bore pile"
-      ],
+      "keywords": [ "ty ren", "bat chuon", "tie rod", "wing nut", "shoring", "kich tang", "u jack", "base jack" ],
+      "category": "GenericModel",
+      "description": "Phu_Kien_Thi_Cong",
+      "discipline": "STR",
+      "priority": 9
+    },
+    {
+      "keywords": [ "coc", "pile", "coc khoan nhoi", "concrete pile", "bore pile", "coc vuong", "coc ly tam" ],
       "category": "StrFoundations",
       "description": "Coc_Be_Tong",
       "discipline": "STR",
       "priority": 10
     },
     {
-      "keywords": [
-        "dai coc",
-        "pile cap",
-        "mong",
-        "foundation",
-        "mong don",
-        "mong bang"
-      ],
+      "keywords": [ "dai coc", "pile cap", "mong", "foundation", "mong don", "mong bang", "mong be" ],
       "category": "StrFoundations",
       "description": "Mong_Be_Tong",
       "discipline": "STR",
       "priority": 9
     },
     {
-      "keywords": [
-        "column",
-        "cot",
-        "concrete rectangular",
-        "cot vuong",
-        "cot tron"
-      ],
+      "keywords": [ "column", "cot", "concrete rectangular", "cot vuong", "cot tron", "cot vach" ],
       "category": "Cols",
       "description": "Cot_Be_Tong",
       "discipline": "STR",
       "priority": 8
     },
     {
-      "keywords": ["beam", "dam", "concrete beam", "dam chinh", "dam phu"],
+      "keywords": [ "beam", "dam", "concrete beam", "dam chinh", "dam phu", "dam san", "lintel" ],
       "category": "Framing",
       "description": "Dam_Be_Tong",
       "discipline": "STR",
       "priority": 8
     },
     {
-      "keywords": ["floor", "san", "concrete floor", "san be tong"],
+      "keywords": [ "floor", "san", "concrete floor", "san be tong", "slab" ],
       "category": "Floors",
       "description": "San_Be_Tong",
       "discipline": "STR",
       "priority": 7
     },
     {
-      "keywords": ["vach", "wall", "concrete wall", "tuong bao"],
-      "category": "Walls",
-      "description": "Vach_Be_Tong",
-      "discipline": "STR",
-      "priority": 7
-    },
-    {
-      "keywords": [
-        "window",
-        "cua so",
-        "cua chop",
-        "louver",
-        "fix window",
-        "glass",
-        "kinh"
-      ],
+      "keywords": [ "window", "cua so", "cua chop", "louver", "fix window", "kinh", "glass", "vach kinh" ],
       "category": "Windows",
       "description": "Cua_So",
       "discipline": "ARC",
       "priority": 6
     },
     {
-      "keywords": [
-        "door",
-        "cua di",
-        "single",
-        "double",
-        "wood",
-        "go",
-        "rolling door",
-        "cua cuon",
-        "glass door"
-      ],
+      "keywords": [ "door", "cua di", "single", "double", "wood", "go", "rolling door", "cua cuon", "cua chong chay", "fire door" ],
       "category": "Doors",
       "description": "Cua_Di",
       "discipline": "ARC",
       "priority": 6
     },
     {
-      "keywords": [
-        "furniture",
-        "ban",
-        "ghe",
-        "table",
-        "chair",
-        "sofa",
-        "bed",
-        "tu",
-        "cabinet",
-        "decor"
-      ],
+      "keywords": [ "furniture", "ban", "ghe", "table", "chair", "sofa", "bed", "tu", "cabinet", "decor", "ke tivi" ],
       "category": "Furniture",
       "description": "Noi_That",
       "discipline": "ARC",
       "priority": 5
     },
     {
-      "keywords": [
-        "casework",
-        "ke",
-        "tu bep",
-        "kitchen cabinet",
-        "worktop",
-        "sink"
-      ],
-      "category": "Casework",
-      "description": "Tu_Ke",
+      "keywords": [ "sanitary", "ve sinh", "lavabo", "wc", "bon cau", "toilet", "chau rua", "shower", "voi sen" ],
+      "category": "PlumbingFixtures",
+      "description": "Thiet_Bi_Ve_Sinh",
       "discipline": "ARC",
-      "priority": 5
+      "priority": 10
     },
     {
-      "keywords": ["railing", "lan can", "tay vin", "handrail", "baluster"],
-      "category": "Railings",
-      "description": "Lan_Can",
-      "discipline": "ARC",
-      "priority": 5
-    },
-    {
-      "keywords": [
-        "ahu",
-        "air handling unit",
-        "xu ly khong khi",
-        "chiller",
-        "cooling tower"
-      ],
+      "keywords": [ "ahu", "air handling unit", "xu ly khong khi", "fcu", "chiller", "cooling tower", "pa hu", "dieu hoa" ],
       "category": "MechEquip",
-      "description": "Thiet_Bi_Co_Khi",
+      "description": "Thiet_Bi_Lanh",
       "discipline": "MEP",
       "priority": 10
     },
     {
-      "keywords": ["pump", "may bom", "booster pump", "fire pump"],
+      "keywords": [ "pump", "may bom", "booster", "fire pump", "bom chim", "bom sinh hoat" ],
       "category": "PlumbingFixtures",
       "description": "May_Bom",
       "discipline": "MEP",
       "priority": 10
     },
     {
-      "keywords": [
-        "duct",
-        "ong gio",
-        "rectangular duct",
-        "round duct",
-        "diffuser",
-        "mieng gio"
-      ],
+      "keywords": [ "duct", "ong gio", "rectangular duct", "round duct", "diffuser", "mieng gio", "vcd", "fvd" ],
       "category": "DuctCurves",
       "description": "He_Thong_Ong_Gio",
       "discipline": "MEP",
       "priority": 8
     },
     {
-      "keywords": ["pipe", "ong nuoc", "ppr", "pvc", "upvc", "steel pipe"],
+      "keywords": [ "pipe", "ong nuoc", "ppr", "pvc", "upvc", "steel pipe", "ong thot", "ong cap" ],
       "category": "PipeCurves",
       "description": "He_Thong_Ong_Nuoc",
       "discipline": "MEP",
       "priority": 8
     },
     {
-      "keywords": [
-        "elbow",
-        "co",
-        "cut",
-        "tee",
-        "te",
-        "goc",
-        "bend",
-        "fitting",
-        "reducer",
-        "con"
-      ],
-      "category": "PipeFittings",
-      "description": "Phu_Kien_Ong",
-      "discipline": "MEP",
-      "priority": 7
-    },
-    {
-      "keywords": [
-        "valve",
-        "van",
-        "gate valve",
-        "ball valve",
-        "van cong",
-        "van bi",
-        "check valve"
-      ],
+      "keywords": [ "valve", "van", "gate valve", "ball valve", "van cong", "van bi", "van 1 chieu", "check valve" ],
       "category": "PipeAccessories",
       "description": "Van_Thiet_Bi",
       "discipline": "MEP",
       "priority": 7
     },
     {
-      "keywords": [
-        "lighting",
-        "fixture",
-        "den",
-        "led",
-        "spotlight",
-        "panel",
-        "downlight"
-      ],
+      "keywords": [ "electrical", "tu dien", "db", "msb", "panelboard", "transformer", "may bien ap", "ups" ],
+      "category": "ElecEquip",
+      "description": "Thiet_Bi_Dien",
+      "discipline": "MEP",
+      "priority": 10
+    },
+    {
+      "keywords": [ "lighting", "den", "led", "spotlight", "downlight", "den tuyp", "exit", "emergency" ],
       "category": "LightingFixtures",
       "description": "Den_Chieu_Sang",
       "discipline": "MEP",
       "priority": 6
     },
     {
-      "keywords": [
-        "security",
-        "camera",
-        "cctv",
-        "bao chay",
-        "smoke detector",
-        "sensor",
-        "cam bien"
-      ],
+      "keywords": [ "security", "camera", "cctv", "bao chay", "smoke detector", "sensor", "nhiet", "khoi" ],
       "category": "SecurityDevices",
       "description": "Thiet_Bi_An_Ninh",
       "discipline": "MEP",
       "priority": 6
     },
     {
-      "keywords": ["tag", "nhan", "annotation", "ky hieu", "symbol"],
+      "keywords": [ "tag", "nhan", "annotation", "ky hieu", "symbol", "ghi chu" ],
       "category": "GenericAnnotations",
       "description": "Ky_Hieu_Ghi_Chu",
       "discipline": "GEN",
       "priority": 4
     },
     {
-      "keywords": ["title block", "khung ten", "sheet"],
+      "keywords": [ "title block", "khung ten", "sheet", "a0", "a1", "a2", "a3", "a4" ],
       "category": "TitleBlocks",
       "description": "Khung_Ten_Ban_Ve",
       "discipline": "GEN",

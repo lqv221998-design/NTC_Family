@@ -121,13 +121,8 @@ namespace NTC.FamilyManager.Services.Naming
 
                 if (matchedRule != null)
                 {
-                    // Tạo tên mới
-                    // Format: NTC_<Discipline>_<Category>_<Description>_<Version>_<Author>
-
-                    string version = _config?.VersionPrefix ?? "2023";
-                    string author = _config?.DefaultAuthor ?? "BimTeam";
-
-                    string newName = $"NTC_{matchedRule.Discipline}_{matchedRule.Description}_{matchedRule.Category}_{version}_{author}";
+                    // Format chuẩn: NTC_<Bộ môn>_<Hạng mục>_<Mô tả>
+                    string newName = $"NTC_{matchedRule.Discipline}_{matchedRule.Category.Replace(" ", "")}_{matchedRule.Description.Replace(" ", "")}";
 
                     return (newName, matchedRule.Category, matchedRule.Discipline, matchedRule.Description);
                 }
@@ -139,8 +134,42 @@ namespace NTC.FamilyManager.Services.Naming
         private string NormalizeString(string input)
         {
             if (string.IsNullOrEmpty(input)) return string.Empty;
-            // Remove Vietnamese accents could be added here if needed
-            return input.ToLower().Trim();
+            string normalized = RemoveAccents(input.ToLower().Trim());
+            return normalized;
+        }
+
+        private string RemoveAccents(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            
+            // Standard Vietnamese accent removal
+            string[] vietnameseSigns = new string[]
+            {
+                "aAeEoOuUiIdDyY",
+                "áàạảãâấầậẩẫăắằặẳẵ",
+                "ÁÀẠẢÃÂẤẦẬẨẪĂẮẰẶẲẴ",
+                "éèẹẻẽêếềệểễ",
+                "ÉÈẸẺẼÊẾỀỆỂỄ",
+                "óòọỏõôốồộổỗơớờợởỡ",
+                "ÓÒỌỎÕÔỐỒỘỔỖƠỚỜỢỞỠ",
+                "úùụủũưứừựửữ",
+                "ÚÙỤỦŨƯỨỪỰỬỮ",
+                "íìịỉĩ",
+                "ÍÌỊỈĨ",
+                "đ",
+                "Đ",
+                "ýỳỵỷỹ",
+                "ÝỲỴỶỸ"
+            };
+
+            for (int i = 1; i < vietnameseSigns.Length; i++)
+            {
+                for (int j = 0; j < vietnameseSigns[i].Length; j++)
+                {
+                    text = text.Replace(vietnameseSigns[i][j], vietnameseSigns[0][i - 1]);
+                }
+            }
+            return text;
         }
 
         public void Dispose()

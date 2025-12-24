@@ -65,6 +65,7 @@ namespace NTC.FamilyManager.Services.Family
                         FamilyName = proposedFamilyName,
                         Category = category,
                         Discipline = discipline,
+                        Version = "2023", // Default AI version
                         ThumbnailPath = tempThumbPath,
                         Status = ProcessingStatus.Pending,
                         Message = "AI Detection (Fast Mode)"
@@ -117,6 +118,8 @@ namespace NTC.FamilyManager.Services.Family
                 discipline = MapCategoryToDiscipline(category);
             }
 
+            string version = _revitHandler.ExtractedVersion ?? "2023";
+
             if (!thumbnailExtracted)
             {
                  tempThumbPath = _revitHandler.ExtractedThumbnailPath;
@@ -140,18 +143,18 @@ namespace NTC.FamilyManager.Services.Family
                 FamilyName = proposedFamilyName,
                 Category = category,
                 Discipline = discipline,
+                Version = version,
                 ThumbnailPath = tempThumbPath,
                 Status = ProcessingStatus.Pending,
-                Message = "Revit Analyzed (Fallback)"
+                Message = (category == "Timeout") ? "Revit Busy (Timeout)" : "Analyzed"
             };
         }
 
         public async Task<bool> CommitStandardizationAsync(FamilyProcessingResult proposal, string destinationRoot = null)
         {
-            // ... (rest of method stays the same, checking for nulls)
             if (proposal == null) return false;
             
-            // Retry logic (3 lần) để dập tắt lỗi file bị khóa
+            // Retry logic (3 lần) để xử lý file bị khóa (Lock)
             for (int i = 0; i < 3; i++)
             {
                 try
@@ -159,51 +162,62 @@ namespace NTC.FamilyManager.Services.Family
                     string targetDir;
                     string disc = proposal.Discipline ?? "GEN";
                     string cat = proposal.Category ?? "GenericModels";
+                    string ver = proposal.Version ?? "2023";
 
+                    // Library 2.0 Structure: [Root]\[Year]\[Discipline]\[Category]
                     if (string.IsNullOrEmpty(destinationRoot))
                     {
                         targetDir = Path.Combine(
                             Path.GetDirectoryName(proposal.OriginalPath), 
-                            "Standardized", 
+                            "Standardized_Library", 
+                            ver,
                             disc, 
                             cat);
                     }
                     else
                     {
-                        targetDir = Path.Combine(destinationRoot, disc, cat);
+                        targetDir = Path.Combine(destinationRoot, ver, disc, cat);
                     }
 
+                    // JIT Folder Creation
                     if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
 
                     string familyName = proposal.FamilyName ?? Path.GetFileNameWithoutExtension(proposal.OriginalPath);
                     string targetPath = Path.Combine(targetDir, familyName + ".rfa");
 
-                    // 1. Di chuyển file RFA
-                    if (File.Exists(targetPath)) File.Delete(targetPath);
-                    File.Move(proposal.OriginalPath, targetPath);
+                    // --- SHADOW COPY SAFETY LOGIC ---
+                    // Tránh Move trực tiếp vì nếu lỗi giữa chừng sẽ mất file gốc
+                    // 1. Copy sang đích
+                    File.Copy(proposal.OriginalPath, targetPath, true);
+                    
+                    // 2. Kiểm tra tính toàn vẹn (Size > 0)
+                    if (new FileInfo(targetPath).Length > 0)
+                    {
+                        // 3. Xóa file gốc nếu copy thành công
+                        try { File.Delete(proposal.OriginalPath); } catch { /* Ignore delete failure */ }
+                    }
 
-                    // 2. Đồng bộ Thumbnail
+                    // 4. Đồng bộ Thumbnail
                     string oldThumb = proposal.ThumbnailPath; 
                     if (!string.IsNullOrEmpty(oldThumb) && File.Exists(oldThumb))
                     {
                         string newThumb = Path.Combine(targetDir, familyName + ".png");
-                        if (File.Exists(newThumb)) File.Delete(newThumb);
-                        File.Copy(oldThumb, newThumb); 
+                        File.Copy(oldThumb, newThumb, true); 
                     }
 
                     proposal.NewPath = targetPath;
                     proposal.Status = ProcessingStatus.Succeeded;
-                    proposal.Message = "Thành công";
+                    proposal.Message = "Đã lưu vào thư viện v" + ver;
                     return true;
                 }
                 catch (IOException) when (i < 2)
                 {
-                    await Task.Delay(1000);
+                    await Task.Delay(1500); // Đợi Revit nhả file
                 }
                 catch (Exception ex)
                 {
                     proposal.Status = ProcessingStatus.Failed;
-                    proposal.Message = ex.Message;
+                    proposal.Message = "Lỗi: " + ex.Message;
                     return false;
                 }
             }
