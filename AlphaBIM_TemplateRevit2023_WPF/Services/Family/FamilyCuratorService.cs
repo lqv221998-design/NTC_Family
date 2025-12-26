@@ -21,21 +21,13 @@ namespace NTC.FamilyManager.Services.Family
         private readonly ExternalEvent _externalEvent;
         private readonly SmartNameGenerator _smartNamer;
         private readonly OleMetadataReader _oleReader;
-<<<<<<< HEAD
         private readonly IThumbnailService _thumbnailService;
-=======
-        private readonly RawBinaryThumbnailExtractor _rawExtractor;
->>>>>>> e676abede778d6f026810cd786f691f51b1d8d5d
 
         public FamilyCuratorService(RevitRequestHandler revitHandler, ExternalEvent externalEvent, IThumbnailService thumbnailService = null)
         {
             _revitHandler = revitHandler;
             _externalEvent = externalEvent;
             _smartNamer = new SmartNameGenerator();
-<<<<<<< HEAD
-=======
-            _rawExtractor = new RawBinaryThumbnailExtractor();
->>>>>>> e676abede778d6f026810cd786f691f51b1d8d5d
             _oleReader = new OleMetadataReader();
             _thumbnailService = thumbnailService ?? new ThumbnailService();
         }
@@ -66,17 +58,8 @@ namespace NTC.FamilyManager.Services.Family
                 category = namingResult.Category ?? oleData.Category;
                 discipline = namingResult.Discipline ?? oleData.Discipline;
 
-<<<<<<< HEAD
                 byte[] thumbData = await _thumbnailService.GetThumbnailDataAsync(filePath);
-                
-=======
-                // --- ETL STRATEGY: RAW BINARY EXTRACTION ---
-                if (_rawExtractor.ExtractThumbnail(filePath, tempThumbPath))
-                {
-                    thumbnailExtracted = true;
-                }
-
->>>>>>> e676abede778d6f026810cd786f691f51b1d8d5d
+                thumbnailExtracted = thumbData != null;
                 return new FamilyProcessingResult
                 {
                     OriginalPath = filePath,
