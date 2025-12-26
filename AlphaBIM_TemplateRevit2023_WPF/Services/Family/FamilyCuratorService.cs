@@ -9,6 +9,8 @@ using NTC.FamilyManager.Core.Models;
 using NTC.FamilyManager.Infrastructure.Revit;
 using NTC.FamilyManager.Services.Naming;
 using NTC.FamilyManager.Services.Thumbnails;
+using NTC.FamilyManager.Infrastructure.Utilities;
+using System.Windows.Media.Imaging;
 using Autodesk.Revit.UI;
 
 namespace NTC.FamilyManager.Services.Family
@@ -19,13 +21,21 @@ namespace NTC.FamilyManager.Services.Family
         private readonly ExternalEvent _externalEvent;
         private readonly SmartNameGenerator _smartNamer;
         private readonly OleMetadataReader _oleReader;
+<<<<<<< HEAD
         private readonly IThumbnailService _thumbnailService;
+=======
+        private readonly RawBinaryThumbnailExtractor _rawExtractor;
+>>>>>>> e676abede778d6f026810cd786f691f51b1d8d5d
 
         public FamilyCuratorService(RevitRequestHandler revitHandler, ExternalEvent externalEvent, IThumbnailService thumbnailService = null)
         {
             _revitHandler = revitHandler;
             _externalEvent = externalEvent;
             _smartNamer = new SmartNameGenerator();
+<<<<<<< HEAD
+=======
+            _rawExtractor = new RawBinaryThumbnailExtractor();
+>>>>>>> e676abede778d6f026810cd786f691f51b1d8d5d
             _oleReader = new OleMetadataReader();
             _thumbnailService = thumbnailService ?? new ThumbnailService();
         }
@@ -34,7 +44,13 @@ namespace NTC.FamilyManager.Services.Family
         {
             if (!File.Exists(filePath)) return null;
 
-            string tempThumbPath = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(filePath) + "_3D.png");
+            string cacheDir = Path.Combine(Path.GetTempPath(), "NTC_Family_Cache");
+            if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
+
+            // Tên cache dựa trên Hash hoặc tên file + time
+            string cacheFileName = $"{Path.GetFileNameWithoutExtension(filePath)}_{File.GetLastWriteTime(filePath).Ticks}.png"; 
+            string tempThumbPath = Path.Combine(cacheDir, cacheFileName);
+
             string proposedFamilyName = null;
             string category = null;
             string discipline = null;
@@ -50,8 +66,17 @@ namespace NTC.FamilyManager.Services.Family
                 category = namingResult.Category ?? oleData.Category;
                 discipline = namingResult.Discipline ?? oleData.Discipline;
 
+<<<<<<< HEAD
                 byte[] thumbData = await _thumbnailService.GetThumbnailDataAsync(filePath);
                 
+=======
+                // --- ETL STRATEGY: RAW BINARY EXTRACTION ---
+                if (_rawExtractor.ExtractThumbnail(filePath, tempThumbPath))
+                {
+                    thumbnailExtracted = true;
+                }
+
+>>>>>>> e676abede778d6f026810cd786f691f51b1d8d5d
                 return new FamilyProcessingResult
                 {
                     OriginalPath = filePath,
@@ -155,6 +180,23 @@ namespace NTC.FamilyManager.Services.Family
                 }
             }
             return false;
+        }
+
+        private void SaveBitmapSourceToPng(BitmapSource bitmapSource, string outputPath)
+        {
+            try
+            {
+                using (var fileStream = new FileStream(outputPath, FileMode.Create))
+                {
+                    BitmapEncoder encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
+                    encoder.Save(fileStream);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Save PNG Error] {ex.Message}");
+            }
         }
 
         public Task<bool> CheckDuplicatesAsync(FamilyProcessingResult proposal)
