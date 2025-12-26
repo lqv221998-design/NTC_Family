@@ -36,17 +36,11 @@ namespace NTC.FamilyManager.Services.Family
         {
             if (!File.Exists(filePath)) return null;
 
-            string cacheDir = Path.Combine(Path.GetTempPath(), "NTC_Family_Cache");
-            if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
-
-            // Tên cache dựa trên Hash hoặc tên file + time
-            string cacheFileName = $"{Path.GetFileNameWithoutExtension(filePath)}_{File.GetLastWriteTime(filePath).Ticks}.png"; 
-            string tempThumbPath = Path.Combine(cacheDir, cacheFileName);
-
             string proposedFamilyName = null;
             string category = null;
             string discipline = null;
             bool thumbnailExtracted = false;
+            string tempThumbPath = null;
 
             try 
             {
@@ -136,15 +130,7 @@ namespace NTC.FamilyManager.Services.Family
                         try { File.Delete(proposal.OriginalPath); } catch { }
                     }
 
-                    if (proposal.ThumbnailData != null && proposal.ThumbnailData.Length > 0)
-                    {
-                        try 
-                        {
-                            string newThumb = Path.Combine(targetDir, familyName + ".png");
-                            File.WriteAllBytes(newThumb, proposal.ThumbnailData);
-                        }
-                        catch { }
-                    }
+
 
                     proposal.NewPath = targetPath;
                     proposal.Status = ProcessingStatus.Succeeded;
@@ -165,22 +151,7 @@ namespace NTC.FamilyManager.Services.Family
             return false;
         }
 
-        private void SaveBitmapSourceToPng(BitmapSource bitmapSource, string outputPath)
-        {
-            try
-            {
-                using (var fileStream = new FileStream(outputPath, FileMode.Create))
-                {
-                    BitmapEncoder encoder = new PngBitmapEncoder();
-                    encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
-                    encoder.Save(fileStream);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Save PNG Error] {ex.Message}");
-            }
-        }
+
 
         public Task<bool> CheckDuplicatesAsync(FamilyProcessingResult proposal)
         {
