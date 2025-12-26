@@ -10,6 +10,27 @@ namespace NTC.FamilyManager.UI.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
+            if (value is byte[] bytes && bytes.Length > 0)
+            {
+                try
+                {
+                    using (var ms = new MemoryStream(bytes))
+                    {
+                        var bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.StreamSource = ms;
+                        bitmap.EndInit();
+                        bitmap.Freeze();
+                        return bitmap;
+                    }
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
             if (value is string path && !string.IsNullOrEmpty(path) && File.Exists(path))
             {
                 try
@@ -19,7 +40,7 @@ namespace NTC.FamilyManager.UI.Converters
                     bitmap.CacheOption = BitmapCacheOption.OnLoad;
                     bitmap.UriSource = new Uri(path, UriKind.Absolute);
                     bitmap.EndInit();
-                    bitmap.Freeze(); // Chống đóng băng luồng UI và cho phép đa luồng
+                    bitmap.Freeze();
                     return bitmap;
                 }
                 catch

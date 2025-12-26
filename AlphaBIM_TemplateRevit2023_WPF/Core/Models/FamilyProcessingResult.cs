@@ -23,6 +23,7 @@ namespace NTC.FamilyManager.Core.Models
         private ProcessingStatus _status;
         private string _message;
         private string _thumbnailPath;
+        private byte[] _thumbnailData;
         private DateTime _processedTime;
 
         public string OriginalPath { get => _originalPath; set => SetProperty(ref _originalPath, value); }
@@ -34,6 +35,7 @@ namespace NTC.FamilyManager.Core.Models
         public ProcessingStatus Status { get => _status; set => SetProperty(ref _status, value); }
         public string Message { get => _message; set => SetProperty(ref _message, value); }
         public string ThumbnailPath { get => _thumbnailPath; set => SetProperty(ref _thumbnailPath, value); }
+        public byte[] ThumbnailData { get => _thumbnailData; set => SetProperty(ref _thumbnailData, value); }
         public DateTime ProcessedTime { get => _processedTime; set => SetProperty(ref _processedTime, value); }
 
         public FamilyProcessingResult()

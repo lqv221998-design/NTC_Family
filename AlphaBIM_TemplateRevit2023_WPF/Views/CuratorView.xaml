@@ -82,7 +82,7 @@
                                                          HorizontalAlignment="Center"
                                                          VerticalAlignment="Center" />
                                 <!-- Actual Thumbnail -->
-                                <Image Source="{Binding ThumbnailPath, Converter={StaticResource ThumbnailToImageConverter}}"
+                                <Image Source="{Binding ThumbnailData, Converter={StaticResource ThumbnailToImageConverter}}"
                                        Stretch="Uniform">
                                     <Image.Style>
                                         <Style TargetType="Image">

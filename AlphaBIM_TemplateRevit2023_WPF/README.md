@@ -22,7 +22,9 @@ Dự án Revit Add-in chuyên nghiệp dành cho tập đoàn **Newtecons**, gi�
 - `ViewModels/`: Logic xử lý dữ liệu cho giao diện.
 - `Views/`: Thiết kế giao diện (XAML).
 - `Base/`: Các lớp nền tảng (ViewModelBase, AssemblyLoader).
-- `Lib/`: Các thư viện DLL nội bộ phục vụ dự án.
+- `Lib/`: Các thư viện DLL nội bộ phục vụ dự án (AlphaBIM, MaterialDesign...).
+- `Core/`: Chứa các Interface và Model lõi của hệ thống.
+- `Infrastructure/`: Triển khai các dịch vụ hạ tầng (Revit API, Caching, Thumbnails).
 - `Sample_SharePoint_Library/`: Tài liệu hướng dẫn cấu hình SharePoint.
 
 ## 🔨 Hướng dẫn Build

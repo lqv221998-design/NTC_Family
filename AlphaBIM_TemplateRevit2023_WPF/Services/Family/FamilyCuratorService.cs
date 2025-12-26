@@ -19,15 +19,15 @@ namespace NTC.FamilyManager.Services.Family
         private readonly ExternalEvent _externalEvent;
         private readonly SmartNameGenerator _smartNamer;
         private readonly OleMetadataReader _oleReader;
-        private readonly OleThumbnailExtractor _oleExtractor;
+        private readonly IThumbnailService _thumbnailService;
 
-        public FamilyCuratorService(RevitRequestHandler revitHandler, ExternalEvent externalEvent)
+        public FamilyCuratorService(RevitRequestHandler revitHandler, ExternalEvent externalEvent, IThumbnailService thumbnailService = null)
         {
             _revitHandler = revitHandler;
             _externalEvent = externalEvent;
             _smartNamer = new SmartNameGenerator();
-            _oleExtractor = new OleThumbnailExtractor();
             _oleReader = new OleMetadataReader();
+            _thumbnailService = thumbnailService ?? new ThumbnailService();
         }
 
         public async Task<FamilyProcessingResult> AnalyzeFamilyAsync(string filePath)
@@ -50,11 +50,8 @@ namespace NTC.FamilyManager.Services.Family
                 category = namingResult.Category ?? oleData.Category;
                 discipline = namingResult.Discipline ?? oleData.Discipline;
 
-                if (_oleExtractor.TryExtractThumbnail(filePath, tempThumbPath))
-                {
-                    thumbnailExtracted = true;
-                }
-
+                byte[] thumbData = await _thumbnailService.GetThumbnailDataAsync(filePath);
+                
                 return new FamilyProcessingResult
                 {
                     OriginalPath = filePath,
@@ -62,9 +59,9 @@ namespace NTC.FamilyManager.Services.Family
                     Category = category ?? "Generic Models",
                     Discipline = discipline ?? "Kiến trúc",
                     Version = revitVersion,
-                    ThumbnailPath = thumbnailExtracted ? tempThumbPath : null,
+                    ThumbnailData = thumbData,
                     Status = ProcessingStatus.Pending,
-                    Message = "NTC Deep Scan (OLE Mode)"
+                    Message = thumbData == null ? "NTC Scan (Direct)" : "NTC Scan (Direct + Memory)"
                 };
             }
             catch (Exception ex)
@@ -131,12 +128,12 @@ namespace NTC.FamilyManager.Services.Family
                         try { File.Delete(proposal.OriginalPath); } catch { }
                     }
 
-                    if (!string.IsNullOrEmpty(proposal.ThumbnailPath) && File.Exists(proposal.ThumbnailPath))
+                    if (proposal.ThumbnailData != null && proposal.ThumbnailData.Length > 0)
                     {
                         try 
                         {
                             string newThumb = Path.Combine(targetDir, familyName + ".png");
-                            File.Copy(proposal.ThumbnailPath, newThumb, true); 
+                            File.WriteAllBytes(newThumb, proposal.ThumbnailData);
                         }
                         catch { }
                     }
